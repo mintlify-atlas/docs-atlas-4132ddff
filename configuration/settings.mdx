@@ -1,0 +1,245 @@
+---
+title: Settings Management
+description: Configure MiniFy settings and understand the settings persistence system
+---
+
+## Overview
+
+MiniFy stores all application settings in a JSON file located in your system's app data directory. Settings are automatically persisted and loaded when you start the application.
+
+## Settings Structure
+
+The settings file contains the following configuration options:
+
+```json
+{
+  "first_boot_done": false,
+  "layout": "LayoutA",
+  "theme": "dark",
+  "ai_providers": [],
+  "active_ai_provider": null,
+  "active_music_provider": "spotify",
+  "show_ai_queue_border": true,
+  "discord_rpc_enabled": true,
+  "last_played_track": null
+}
+```
+
+## Settings Fields
+
+### Core Settings
+
+<Accordion title="first_boot_done">
+  Indicates whether the initial setup wizard has been completed.
+  
+  - **Type**: `boolean`
+  - **Default**: `false`
+  - **Location**: `settings.rs:53`
+</Accordion>
+
+<Accordion title="layout">
+  The active UI layout for the player.
+  
+  - **Type**: `string`
+  - **Default**: `"LayoutA"`
+  - **Location**: `settings.rs:54`
+</Accordion>
+
+<Accordion title="theme">
+  The active theme name (built-in or custom).
+  
+  - **Type**: `string`
+  - **Default**: `"dark"`
+  - **Location**: `settings.rs:55`
+</Accordion>
+
+### AI Settings
+
+<Accordion title="ai_providers">
+  List of configured AI providers with their enabled status.
+  
+  - **Type**: `array`
+  - **Default**: `[]`
+  - **Location**: `settings.rs:57`
+  
+  Each provider object contains:
+  ```json
+  {
+    "provider": "openai",
+    "enabled": true
+  }
+  ```
+</Accordion>
+
+<Accordion title="active_ai_provider">
+  The currently selected AI provider for generating playlists.
+  
+  - **Type**: `string | null`
+  - **Default**: `null`
+  - **Options**: `"openai"`, `"anthropic"`, `"google"`, `"groq"`
+  - **Location**: `settings.rs:59`
+</Accordion>
+
+### Music Provider Settings
+
+<Accordion title="active_music_provider">
+  The currently selected music streaming service.
+  
+  - **Type**: `string | null`
+  - **Default**: `"spotify"`
+  - **Options**: `"spotify"`, `"youtube"`
+  - **Location**: `settings.rs:61`
+</Accordion>
+
+### UI Settings
+
+<Accordion title="show_ai_queue_border">
+  Controls visibility of the AI queue border.
+  
+  - **Type**: `boolean`
+  - **Default**: `true`
+  - **Location**: `settings.rs:63`
+</Accordion>
+
+<Accordion title="discord_rpc_enabled">
+  Enables Discord Rich Presence integration.
+  
+  - **Type**: `boolean`
+  - **Default**: `true`
+  - **Location**: `settings.rs:65`
+</Accordion>
+
+### Playback State
+
+<Accordion title="last_played_track">
+  Caches the last played track for quick restoration.
+  
+  - **Type**: `object | null`
+  - **Default**: `null`
+  - **Location**: `settings.rs:67`
+  
+  Structure:
+  ```json
+  {
+    "track": {
+      "id": "track_id",
+      "name": "Song Name",
+      "duration_ms": 240000,
+      "artists": [{"id": "artist_id", "name": "Artist Name"}],
+      "album": {
+        "id": "album_id",
+        "name": "Album Name",
+        "images": [{"url": "https://...", "height": 640, "width": 640}]
+      },
+      "uri": "spotify:track:...",
+      "provider": "spotify"
+    },
+    "progress_ms": 120000,
+    "cached_at": 1709136000
+  }
+  ```
+</Accordion>
+
+## Settings File Location
+
+The settings file is stored at:
+
+<CodeGroup>
+```bash Windows
+%APPDATA%\minify\settings.json
+```
+
+```bash macOS
+~/Library/Application Support/minify/settings.json
+```
+
+```bash Linux
+~/.local/share/minify/settings.json
+```
+</CodeGroup>
+
+## Managing Settings
+
+<Steps>
+  <Step title="Read Settings">
+    Settings are automatically loaded when MiniFy starts. The `read_settings()` command loads settings from disk or returns defaults if the file doesn't exist.
+    
+    See: `settings.rs:103`
+  </Step>
+  
+  <Step title="Write Settings">
+    Settings are automatically saved when you make changes in the UI. The `write_settings()` command persists changes to disk.
+    
+    See: `settings.rs:117`
+  </Step>
+  
+  <Step title="Clear Settings">
+    To reset all settings to defaults, use the clear settings option in the app. This removes the settings file entirely.
+    
+    See: `settings.rs:138`
+  </Step>
+</Steps>
+
+<Warning>
+  Manually editing the settings file while MiniFy is running may cause your changes to be overwritten. Always close MiniFy before manually editing settings.
+</Warning>
+
+## Default Values
+
+If no settings file exists, MiniFy uses these defaults:
+
+```rust
+Settings {
+    first_boot_done: false,
+    layout: "LayoutA".into(),
+    theme: "dark".into(),
+    ai_providers: Vec::new(),
+    active_ai_provider: None,
+    active_music_provider: Some("spotify".into()),
+    show_ai_queue_border: true,
+    discord_rpc_enabled: true,
+    last_played_track: None,
+}
+```
+
+<Note>
+  API keys for AI providers and music services are stored separately in your system's secure keyring, not in the settings file.
+</Note>
+
+## Troubleshooting
+
+### Settings not persisting
+
+1. Check file permissions on the app data directory
+2. Ensure sufficient disk space is available
+3. Verify the directory exists and is writable
+
+### Corrupted settings file
+
+If MiniFy fails to load settings due to JSON corruption:
+
+1. Close MiniFy
+2. Delete the `settings.json` file
+3. Restart MiniFy to generate a fresh settings file with defaults
+
+### Reset to defaults
+
+To completely reset MiniFy:
+
+<Steps>
+  <Step title="Close MiniFy">
+    Quit the application completely
+  </Step>
+  
+  <Step title="Delete settings file">
+    Navigate to your settings file location and delete `settings.json`
+  </Step>
+  
+  <Step title="Clear credentials (optional)">
+    To also remove stored API keys and authentication tokens, use the "Clear All Data" option in Settings before closing
+  </Step>
+  
+  <Step title="Restart">
+    Launch MiniFy to start fresh with default settings
+  </Step>
+</Steps>

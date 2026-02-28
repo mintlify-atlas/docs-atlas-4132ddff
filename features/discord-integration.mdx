@@ -1,0 +1,423 @@
+---
+title: Discord Integration
+description: Show what you're listening to with Discord Rich Presence
+icon: discord
+---
+
+MiniFy integrates with Discord Rich Presence to display your currently playing track, AI Queue status, and provide a link to the project on GitHub.
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Now Playing" icon="music">
+    Display the current track name and artist in your Discord status
+  </Card>
+  <Card title="AI Queue Indicator" icon="robot">
+    Show when AI Queue is actively curating your music
+  </Card>
+  <Card title="GitHub Link" icon="github">
+    Button to view MiniFy on GitHub
+  </Card>
+  <Card title="Auto-Reconnect" icon="rotate">
+    Automatically reconnects if Discord restarts
+  </Card>
+</CardGroup>
+
+## Setup
+
+<Steps>
+  <Step title="Ensure Discord is Running">
+    Discord must be open and logged in on your computer
+  </Step>
+  <Step title="Enable in Settings">
+    Go to Settings > Discord Integration and toggle it on
+  </Step>
+  <Step title="Start Listening">
+    Your Discord status will automatically update when you play music
+  </Step>
+</Steps>
+
+<Note>
+  Discord Rich Presence is enabled by default. You can disable it from Settings if you prefer not to share your listening activity.
+</Note>
+
+## Implementation
+
+MiniFy's Discord integration is built with Rust using the `discord-rich-presence` crate.
+
+### Discord Application ID
+
+```rust
+const DISCORD_APPLICATION_ID: &str = "1456693272163385447";
+const GITHUB_URL: &str = "https://github.com/ModioStudio/MiniFy";
+```
+
+### State Management
+
+```rust
+pub struct DiscordState {
+    pub client: Mutex<Option<DiscordIpcClient>>,
+    pub enabled: Mutex<bool>,
+}
+
+impl DiscordState {
+    pub fn new() -> Self {
+        Self {
+            client: Mutex::new(None),
+            enabled: Mutex::new(true),
+        }
+    }
+}
+```
+
+## API Commands
+
+### Enable Discord RPC
+
+Enable Discord Rich Presence and connect to Discord.
+
+```rust
+#[tauri::command]
+pub fn enable_discord_rpc(state: State<DiscordState>) -> Result<(), String> {
+    let mut enabled = state.enabled.lock()?;
+    *enabled = true;
+
+    let mut client_lock = state.client.lock()?;
+
+    if client_lock.is_none() {
+        match connect_discord() {
+            Ok(client) => {
+                *client_lock = Some(client);
+            }
+            Err(e) => {
+                return Err(format!("Could not connect to Discord: {}", e));
+            }
+        }
+    }
+
+    if let Some(client) = client_lock.as_mut() {
+        let activity = activity::Activity::new()
+            .state("Streaming music")
+            .details("Listening to MiniFy")
+            .assets(
+                activity::Assets::new()
+                    .large_image("minify_logo")
+                    .large_text("MiniFy - Minimal Music Player"),
+            )
+            .buttons(create_buttons());
+
+        client.set_activity(activity)?;
+    }
+
+    Ok(())
+}
+```
+
+### Disable Discord RPC
+
+Disable Discord Rich Presence and clear the activity.
+
+```rust
+#[tauri::command]
+pub fn disable_discord_rpc(state: State<DiscordState>) -> Result<(), String> {
+    let mut enabled = state.enabled.lock()?;
+    *enabled = false;
+
+    let mut client_lock = state.client.lock()?;
+
+    if let Some(client) = client_lock.as_mut() {
+        let _ = client.clear_activity();
+        let _ = client.close();
+    }
+
+    *client_lock = None;
+    Ok(())
+}
+```
+
+### Update Discord Presence
+
+Update the Discord status with current track information.
+
+```rust
+#[tauri::command]
+pub fn update_discord_presence(
+    state: State<DiscordState>,
+    track_name: Option<String>,
+    artist_name: Option<String>,
+    is_playing: bool,
+    ai_queue_active: bool,
+) -> Result<(), String> {
+    let enabled = state.enabled.lock()?;
+    if !*enabled {
+        return Ok(());
+    }
+    drop(enabled);
+
+    let mut client_lock = state.client.lock()?;
+
+    // Auto-reconnect if client is not connected
+    if client_lock.is_none() {
+        match connect_discord() {
+            Ok(client) => {
+                *client_lock = Some(client);
+            }
+            Err(_) => {
+                return Ok(()); // Fail silently if Discord is not running
+            }
+        }
+    }
+
+    if let Some(client) = client_lock.as_mut() {
+        // Determine details (track name)
+        let details = if is_playing {
+            track_name.unwrap_or_else(|| "Listening to music".to_string())
+        } else {
+            "Paused".to_string()
+        };
+
+        // Determine state text (artist + AI Queue indicator)
+        let state_text = if ai_queue_active {
+            format!(
+                "{} • AI Queue",
+                artist_name.unwrap_or_else(|| "MiniFy".to_string())
+            )
+        } else if is_playing {
+            artist_name.unwrap_or_else(|| "Unknown Artist".to_string())
+        } else {
+            "MiniFy".to_string()
+        };
+
+        // AI Queue indicator icon
+        let mut assets = activity::Assets::new()
+            .large_image("minify_logo")
+            .large_text("MiniFy - Minimal Music Player");
+
+        if ai_queue_active {
+            assets = assets
+                .small_image("ai_queue")
+                .small_text("AI Queue Active");
+        }
+
+        let activity = activity::Activity::new()
+            .details(&details)
+            .state(&state_text)
+            .assets(assets)
+            .buttons(create_buttons());
+
+        // Auto-reconnect on error
+        if client.set_activity(activity).is_err() {
+            *client_lock = None;
+            if let Ok(new_client) = connect_discord() {
+                *client_lock = Some(new_client);
+            }
+        }
+    }
+
+    Ok(())
+}
+```
+
+### Check if Enabled
+
+Check if Discord RPC is currently enabled.
+
+```rust
+#[tauri::command]
+pub fn is_discord_rpc_enabled(state: State<DiscordState>) -> Result<bool, String> {
+    let enabled = state.enabled.lock()?;
+    Ok(*enabled)
+}
+```
+
+## Activity States
+
+### Default State (No Track)
+
+```rust
+activity::Activity::new()
+    .state("Streaming music")
+    .details("Listening to MiniFy")
+    .assets(
+        activity::Assets::new()
+            .large_image("minify_logo")
+            .large_text("MiniFy - Minimal Music Player"),
+    )
+    .buttons(create_buttons())
+```
+
+**Discord displays:**
+- **Details:** Listening to MiniFy
+- **State:** Streaming music
+- **Large Image:** MiniFy logo
+- **Button:** "View on GitHub"
+
+### Playing a Track
+
+```rust
+let details = track_name.unwrap_or_else(|| "Listening to music".to_string());
+let state_text = artist_name.unwrap_or_else(|| "Unknown Artist".to_string());
+
+activity::Activity::new()
+    .details(&details)           // e.g., "Blinding Lights"
+    .state(&state_text)          // e.g., "The Weeknd"
+    .assets(...)
+```
+
+**Discord displays:**
+- **Details:** Blinding Lights
+- **State:** The Weeknd
+- **Large Image:** MiniFy logo
+
+### AI Queue Active
+
+```rust
+let state_text = format!(
+    "{} • AI Queue",
+    artist_name.unwrap_or_else(|| "MiniFy".to_string())
+);
+
+let assets = activity::Assets::new()
+    .large_image("minify_logo")
+    .large_text("MiniFy - Minimal Music Player")
+    .small_image("ai_queue")
+    .small_text("AI Queue Active");
+```
+
+**Discord displays:**
+- **Details:** [Track Name]
+- **State:** [Artist] • AI Queue
+- **Large Image:** MiniFy logo
+- **Small Image:** AI Queue icon
+- **Small Image Tooltip:** AI Queue Active
+
+### Paused State
+
+```rust
+let details = "Paused".to_string();
+let state_text = "MiniFy".to_string();
+```
+
+**Discord displays:**
+- **Details:** Paused
+- **State:** MiniFy
+
+## Buttons
+
+Every activity includes a "View on GitHub" button:
+
+```rust
+fn create_buttons() -> Vec<activity::Button<'static>> {
+    vec![activity::Button::new("View on GitHub", GITHUB_URL)]
+}
+```
+
+Clicking the button opens:
+```
+https://github.com/ModioStudio/MiniFy
+```
+
+## Auto-Reconnect Logic
+
+MiniFy automatically reconnects to Discord if the connection is lost:
+
+```rust
+// In update_discord_presence:
+if client_lock.is_none() {
+    match connect_discord() {
+        Ok(client) => {
+            *client_lock = Some(client);
+        }
+        Err(_) => {
+            return Ok(()); // Fail silently
+        }
+    }
+}
+
+// After setting activity:
+if client.set_activity(activity).is_err() {
+    *client_lock = None;
+    if let Ok(new_client) = connect_discord() {
+        *client_lock = Some(new_client);
+    }
+}
+```
+
+<Tip>
+  If Discord is closed and reopened, MiniFy will automatically reconnect and restore your Rich Presence.
+</Tip>
+
+## Frontend Integration
+
+Call the Tauri commands from TypeScript/React:
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+// Enable Discord RPC
+await invoke("enable_discord_rpc");
+
+// Disable Discord RPC
+await invoke("disable_discord_rpc");
+
+// Update presence
+await invoke("update_discord_presence", {
+  trackName: "Blinding Lights",
+  artistName: "The Weeknd",
+  isPlaying: true,
+  aiQueueActive: false,
+});
+
+// Check if enabled
+const enabled = await invoke<boolean>("is_discord_rpc_enabled");
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Discord status not showing" icon="circle-exclamation">
+    **Possible causes:**
+    - Discord is not running
+    - Discord RPC is disabled in MiniFy settings
+    - Discord RPC is disabled in Discord settings (User Settings > Activity Privacy)
+    
+    **Solutions:**
+    1. Ensure Discord is open and logged in
+    2. Check MiniFy Settings > Discord Integration
+    3. Verify Discord's Activity Privacy settings
+  </Accordion>
+
+  <Accordion title="Status shows 'Listening to MiniFy' instead of track" icon="music">
+    **Cause:** No track is currently playing or track info not available
+    
+    **Solution:** Play a track - the status will update automatically
+  </Accordion>
+
+  <Accordion title="Status not updating when changing tracks" icon="rotate">
+    **Cause:** Update command may not be firing
+    
+    **Solution:** Disable and re-enable Discord integration from Settings
+  </Accordion>
+</AccordionGroup>
+
+## Privacy Considerations
+
+<Warning>
+  Discord Rich Presence broadcasts your listening activity to Discord servers and your friends. Disable it from Settings if you prefer privacy.
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="What's Shared" icon="share">
+    - Current track name
+    - Current artist
+    - Play/pause state
+    - AI Queue status
+    - Link to MiniFy GitHub
+  </Card>
+  <Card title="What's Not Shared" icon="shield">
+    - Your Spotify/YouTube account
+    - Listening history
+    - Playlists
+    - Personal music data
+  </Card>
+</CardGroup>

@@ -1,0 +1,406 @@
+---
+title: AI Commands
+description: Secure API key management for AI providers
+---
+
+These commands provide secure storage and retrieval of API keys for AI providers (OpenAI, Anthropic, Google, Groq) using the system keyring.
+
+## Supported Providers
+
+MiniFy supports the following AI providers:
+
+- `openai` - OpenAI (GPT models)
+- `anthropic` - Anthropic (Claude models)
+- `google` - Google (Gemini models)
+- `groq` - Groq (fast inference)
+
+## Commands
+
+### save_ai_api_key
+
+Save an API key for a specific AI provider to the system keyring.
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+type AIProviderType = "openai" | "anthropic" | "google" | "groq";
+
+await invoke("save_ai_api_key", {
+  provider: "openai",
+  apiKey: "sk-proj-..."
+});
+```
+
+<ParamField path="provider" type="AIProviderType" required>
+  The AI provider: `"openai"`, `"anthropic"`, `"google"`, or `"groq"`
+</ParamField>
+
+<ParamField path="apiKey" type="string" required>
+  The API key to store (will be trimmed automatically)
+</ParamField>
+
+<ResponseField name="Result" type="void">
+  Returns nothing on success, throws error string on failure
+</ResponseField>
+
+**Validation**
+- Trims whitespace from the API key
+- Rejects empty strings: `"API key is empty"`
+- Updates in-memory cache for fast subsequent access
+
+**Storage Location**
+- **macOS**: Keychain (`minify/ai_key_openai`, etc.)
+- **Windows**: Credential Manager
+- **Linux**: Secret Service (libsecret)
+
+**Source**: `ai_keyring.rs:49-69`
+
+---
+
+### get_ai_api_key
+
+Retrieve a stored API key for a specific provider.
+
+```typescript
+const apiKey = await invoke<string>("get_ai_api_key", {
+  provider: "openai"
+});
+
+console.log(apiKey); // "sk-proj-..."
+```
+
+<ParamField path="provider" type="AIProviderType" required>
+  The AI provider to retrieve the key for
+</ParamField>
+
+<ResponseField name="api_key" type="string">
+  The stored API key
+</ResponseField>
+
+**Error Handling**
+
+```typescript
+try {
+  const key = await invoke<string>("get_ai_api_key", { 
+    provider: "openai" 
+  });
+} catch (error) {
+  // Error: "Failed to get AI API key: No password found"
+  console.error(error);
+}
+```
+
+**Caching Behavior**
+- First call reads from keyring (slower)
+- Subsequent calls return cached value (instant)
+- Cache persists until app restart or key deletion
+
+**Source**: `ai_keyring.rs:71-91`
+
+---
+
+### has_ai_api_key
+
+Check if an API key exists for a provider without retrieving it.
+
+```typescript
+const hasOpenAI = await invoke<boolean>("has_ai_api_key", {
+  provider: "openai"
+});
+
+if (!hasOpenAI) {
+  // Show API key input UI
+}
+```
+
+<ParamField path="provider" type="AIProviderType" required>
+  The AI provider to check
+</ParamField>
+
+<ResponseField name="has_key" type="boolean">
+  `true` if a key is stored, `false` otherwise
+</ResponseField>
+
+**Use Cases**
+- Conditionally showing setup UI
+- Validating configuration before making API calls
+- Checking multiple providers in parallel
+
+**Source**: `ai_keyring.rs:93-114`
+
+---
+
+### delete_ai_api_key
+
+Delete a stored API key for a specific provider.
+
+```typescript
+await invoke("delete_ai_api_key", {
+  provider: "openai"
+});
+```
+
+<ParamField path="provider" type="AIProviderType" required>
+  The AI provider whose key should be deleted
+</ParamField>
+
+<ResponseField name="Result" type="void">
+  Returns nothing on success, throws error on failure
+</ResponseField>
+
+**Effects**
+- Removes key from system keyring
+- Clears in-memory cache for this provider
+- Does not affect other providers
+
+<Warning>
+This operation cannot be undone. The user will need to re-enter the API key.
+</Warning>
+
+**Source**: `ai_keyring.rs:116-129`
+
+---
+
+### get_all_ai_providers
+
+Get the status of all AI providers (which ones have keys configured).
+
+```typescript
+interface AIProviderKeyring {
+  provider: string;
+  has_key: boolean;
+}
+
+const providers = await invoke<AIProviderKeyring[]>("get_all_ai_providers");
+
+console.log(providers);
+// [
+//   { provider: "openai", has_key: true },
+//   { provider: "anthropic", has_key: false },
+//   { provider: "google", has_key: false },
+//   { provider: "groq", has_key: true }
+// ]
+```
+
+<ResponseField name="providers" type="AIProviderKeyring[]">
+  Array of provider status objects
+</ResponseField>
+
+<ResponseField name="providers[].provider" type="string">
+  Provider identifier: `"openai"`, `"anthropic"`, `"google"`, or `"groq"`
+</ResponseField>
+
+<ResponseField name="providers[].has_key" type="boolean">
+  Whether an API key is configured for this provider
+</ResponseField>
+
+**Use Cases**
+- Rendering provider configuration UI
+- Showing available AI models based on configured keys
+- Validation before allowing AI feature access
+
+**Source**: `ai_keyring.rs:131-144`
+
+---
+
+### clear_all_ai_keys
+
+Delete all stored AI provider API keys.
+
+```typescript
+await invoke("clear_all_ai_keys");
+```
+
+<ResponseField name="Result" type="void">
+  Returns nothing on success, throws error on failure
+</ResponseField>
+
+**Effects**
+- Removes keys for **all** providers (openai, anthropic, google, groq)
+- Clears all in-memory caches
+- Called automatically by `clear_everything` command
+
+<Warning>
+This operation cannot be undone and affects all AI providers simultaneously.
+</Warning>
+
+**Source**: `ai_keyring.rs:146-163`
+
+---
+
+## Example: Multi-Provider Setup
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+type AIProviderType = "openai" | "anthropic" | "google" | "groq";
+
+interface AIProviderKeyring {
+  provider: string;
+  has_key: boolean;
+}
+
+async function setupAIProviders() {
+  // 1. Check which providers are already configured
+  const providers = await invoke<AIProviderKeyring[]>("get_all_ai_providers");
+  
+  console.log("Provider status:", providers);
+  
+  // 2. Configure missing providers
+  for (const p of providers) {
+    if (!p.has_key) {
+      const key = prompt(`Enter API key for ${p.provider}:`);
+      if (key) {
+        await invoke("save_ai_api_key", {
+          provider: p.provider as AIProviderType,
+          apiKey: key
+        });
+        console.log(`${p.provider} configured`);
+      }
+    }
+  }
+  
+  // 3. Verify configuration
+  const hasOpenAI = await invoke<boolean>("has_ai_api_key", {
+    provider: "openai"
+  });
+  
+  if (hasOpenAI) {
+    // 4. Retrieve key for use
+    const openAIKey = await invoke<string>("get_ai_api_key", {
+      provider: "openai"
+    });
+    
+    // Initialize OpenAI client with key
+    console.log("OpenAI ready:", openAIKey.substring(0, 8) + "...");
+  }
+}
+
+setupAIProviders();
+```
+
+## Example: Conditional UI Rendering
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+
+interface AIProviderKeyring {
+  provider: string;
+  has_key: boolean;
+}
+
+function AIProviderSettings() {
+  const [providers, setProviders] = useState<AIProviderKeyring[]>([]);
+  
+  useEffect(() => {
+    invoke<AIProviderKeyring[]>("get_all_ai_providers")
+      .then(setProviders);
+  }, []);
+  
+  const handleSaveKey = async (provider: string, key: string) => {
+    try {
+      await invoke("save_ai_api_key", { provider, apiKey: key });
+      
+      // Refresh provider list
+      const updated = await invoke<AIProviderKeyring[]>("get_all_ai_providers");
+      setProviders(updated);
+    } catch (error) {
+      alert(`Failed to save key: ${error}`);
+    }
+  };
+  
+  const handleDeleteKey = async (provider: string) => {
+    try {
+      await invoke("delete_ai_api_key", { provider });
+      
+      // Refresh provider list
+      const updated = await invoke<AIProviderKeyring[]>("get_all_ai_providers");
+      setProviders(updated);
+    } catch (error) {
+      alert(`Failed to delete key: ${error}`);
+    }
+  };
+  
+  return (
+    <div>
+      {providers.map(p => (
+        <div key={p.provider}>
+          <h3>{p.provider}</h3>
+          <p>Status: {p.has_key ? "✓ Configured" : "⚠ Not configured"}</p>
+          {p.has_key ? (
+            <button onClick={() => handleDeleteKey(p.provider)}>
+              Remove Key
+            </button>
+          ) : (
+            <input 
+              type="password"
+              placeholder="Enter API key"
+              onBlur={(e) => handleSaveKey(p.provider, e.target.value)}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Never Log API Keys">
+    ```typescript
+    // ❌ DON'T: Log full API keys
+    const key = await invoke<string>("get_ai_api_key", { provider: "openai" });
+    console.log("Key:", key); // Exposes key in logs
+    
+    // ✅ DO: Mask keys when logging
+    console.log("Key:", key.substring(0, 8) + "...");
+    ```
+  </Accordion>
+  
+  <Accordion title="Minimize Key Exposure">
+    ```typescript
+    // ❌ DON'T: Store keys in React state or global variables
+    const [apiKey, setApiKey] = useState("");
+    
+    // ✅ DO: Fetch keys only when needed, pass directly to API client
+    async function makeAIRequest(prompt: string) {
+      const key = await invoke<string>("get_ai_api_key", { provider: "openai" });
+      return fetch("https://api.openai.com/v1/chat/completions", {
+        headers: { "Authorization": `Bearer ${key}` },
+        // ...
+      });
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Missing Keys Gracefully">
+    ```typescript
+    async function getAIKey(provider: AIProviderType): Promise<string | null> {
+      try {
+        return await invoke<string>("get_ai_api_key", { provider });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes("not found") || message.includes("No password found")) {
+          return null; // Key doesn't exist (not an error)
+        }
+        throw error; // Re-throw actual errors (keyring access denied, etc.)
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Spotify Commands" icon="spotify" href="/api/spotify-commands">
+    Similar secure credential storage for Spotify
+  </Card>
+  
+  <Card title="Settings Commands" icon="gear" href="/api/settings-commands">
+    Store active AI provider selection
+  </Card>
+</CardGroup>

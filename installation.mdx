@@ -1,0 +1,322 @@
+---
+title: Installation
+description: Download and install MiniFy on Windows, macOS, or Linux. System requirements and platform-specific instructions.
+---
+
+# Installation
+
+MiniFy is available for Windows, macOS, and Linux. Choose your platform below to get started.
+
+## Download MiniFy
+
+Get the latest release from GitHub:
+
+<Card title="Download from GitHub Releases" icon="github" href="https://github.com/ModioStudio/MiniFy/releases/latest">
+  Download the latest stable version for your platform
+</Card>
+
+## System requirements
+
+Before installing MiniFy, ensure your system meets these requirements:
+
+### All platforms
+
+- Active Spotify account (Free or Premium)
+- Internet connection for Spotify API and OAuth
+- Minimum 4GB RAM
+- 100MB free disk space
+
+### Windows
+
+- Windows 10 (1809 or later) or Windows 11
+- WebView2 (usually pre-installed on Windows 11)
+
+### macOS
+
+- macOS 10.15 (Catalina) or later
+- Apple Silicon (M1/M2/M3) or Intel processors supported
+
+### Linux
+
+- GTK 3.24 or later
+- WebKitGTK 2.36 or later
+- Secret Service API support (gnome-keyring, KWallet, or equivalent)
+
+<Note>
+  MiniFy uses your operating system's secure credential storage. On Linux, ensure you have a secret service daemon running (like gnome-keyring).
+</Note>
+
+## Installation instructions
+
+<Tabs>
+  <Tab title="Windows">
+    ### Windows installation
+
+    <Steps>
+      <Step title="Download the installer">
+        Download `MiniFy_x.x.x_x64_en-US.msi` from the [GitHub Releases page](https://github.com/ModioStudio/MiniFy/releases/latest).
+      </Step>
+      <Step title="Run the installer">
+        Double-click the `.msi` file and follow the installation wizard.
+        
+        You may see a Windows SmartScreen warning on first run. Click "More info" and then "Run anyway" to proceed.
+      </Step>
+      <Step title="Launch MiniFy">
+        MiniFy will be added to your Start Menu. Launch it from there or use the desktop shortcut if created.
+      </Step>
+    </Steps>
+
+    ### Installing WebView2
+
+    MiniFy requires Microsoft Edge WebView2 Runtime. Windows 11 includes this by default. If you're on Windows 10 and MiniFy fails to start:
+
+    1. Download the [WebView2 Runtime installer](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section)
+    2. Run the installer and restart MiniFy
+
+    ### Portable version
+
+    Alternatively, download `MiniFy_x.x.x_x64.exe` for a portable version that doesn't require installation. Simply run the executable from any folder.
+
+    <Warning>
+      The portable version stores credentials in the Windows Credential Manager under your user account. Moving the executable to a different machine will require re-authentication.
+    </Warning>
+  </Tab>
+
+  <Tab title="macOS">
+    ### macOS installation
+
+    <Steps>
+      <Step title="Download the DMG">
+        Download `MiniFy_x.x.x_aarch64.dmg` (Apple Silicon) or `MiniFy_x.x.x_x64.dmg` (Intel) from the [GitHub Releases page](https://github.com/ModioStudio/MiniFy/releases/latest).
+      </Step>
+      <Step title="Open the DMG">
+        Double-click the `.dmg` file to mount it.
+      </Step>
+      <Step title="Install the app">
+        Drag the MiniFy app icon to your Applications folder.
+      </Step>
+      <Step title="Launch MiniFy">
+        Open MiniFy from your Applications folder or Spotlight.
+        
+        On first launch, you may see a security warning because the app isn't signed with an Apple Developer certificate.
+      </Step>
+    </Steps>
+
+    ### Bypassing Gatekeeper
+
+    If macOS blocks MiniFy from opening:
+
+    1. Right-click (or Control+click) the MiniFy app in Applications
+    2. Select "Open" from the context menu
+    3. Click "Open" in the security dialog
+
+    Alternatively, grant permission via System Settings:
+
+    ```bash
+    # Open System Settings → Privacy & Security
+    # Scroll to "Security" section
+    # Click "Open Anyway" next to the MiniFy blocked message
+    ```
+
+    <Note>
+      MiniFy credentials are stored in macOS Keychain under the service name `minify`. You can view these entries in Keychain Access.app.
+    </Note>
+  </Tab>
+
+  <Tab title="Linux">
+    ### Linux installation
+
+    <Steps>
+      <Step title="Download the package">
+        Download the appropriate package for your distribution from the [GitHub Releases page](https://github.com/ModioStudio/MiniFy/releases/latest):
+        
+        - **Debian/Ubuntu**: `MiniFy_x.x.x_amd64.deb`
+        - **Fedora/RHEL**: `MiniFy_x.x.x.x86_64.rpm`
+        - **Arch**: `MiniFy_x.x.x.x86_64.AppImage`
+        - **Universal**: `MiniFy_x.x.x.x86_64.AppImage`
+      </Step>
+      <Step title="Install dependencies">
+        Ensure you have the required dependencies:
+        
+        **Debian/Ubuntu:**
+        ```bash
+        sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 gnome-keyring
+        ```
+        
+        **Fedora:**
+        ```bash
+        sudo dnf install webkit2gtk4.1 gtk3 gnome-keyring
+        ```
+        
+        **Arch:**
+        ```bash
+        sudo pacman -S webkit2gtk gtk3 gnome-keyring
+        ```
+      </Step>
+      <Step title="Install the package">
+        **Debian/Ubuntu:**
+        ```bash
+        sudo dpkg -i MiniFy_x.x.x_amd64.deb
+        sudo apt install -f  # Fix any missing dependencies
+        ```
+        
+        **Fedora:**
+        ```bash
+        sudo rpm -i MiniFy_x.x.x.x86_64.rpm
+        ```
+        
+        **AppImage (all distros):**
+        ```bash
+        chmod +x MiniFy_x.x.x.x86_64.AppImage
+        ./MiniFy_x.x.x.x86_64.AppImage
+        ```
+      </Step>
+      <Step title="Launch MiniFy">
+        Run from your application menu or terminal:
+        ```bash
+        minify
+        ```
+      </Step>
+    </Steps>
+
+    ### Secret service setup
+
+    MiniFy requires a running secret service daemon to store credentials securely. Most desktop environments include this by default.
+
+    **GNOME/Ubuntu:**
+    ```bash
+    # gnome-keyring should be running by default
+    # Verify with:
+    ps aux | grep gnome-keyring
+    ```
+
+    **KDE Plasma:**
+    ```bash
+    # KWallet is the default
+    # Verify with:
+    ps aux | grep kwalletd
+    ```
+
+    **Other desktop environments:**
+    ```bash
+    # Install and enable gnome-keyring
+    sudo apt install gnome-keyring  # Debian/Ubuntu
+    
+    # Add to your session startup:
+    gnome-keyring-daemon --start --components=secrets
+    ```
+
+    <Warning>
+      Without a secret service daemon, MiniFy cannot store credentials and will fail during authentication. Ensure gnome-keyring or an equivalent is running.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Spotify developer setup
+
+MiniFy requires a Spotify Developer Client ID to authenticate with the Spotify API. This is free and takes 2 minutes.
+
+<Steps>
+  <Step title="Create a Spotify app">
+    Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and log in with your Spotify account.
+    
+    Click "Create app" and fill in:
+    - **App name**: MiniFy (or any name you prefer)
+    - **App description**: Personal Spotify mini player
+    - **Redirect URI**: `http://127.0.0.1:3000/callback`
+    - **API**: Check "Web API"
+  </Step>
+  <Step title="Get your Client ID">
+    After creating the app, you'll see your **Client ID** on the app dashboard. Copy this value.
+    
+    You do NOT need the Client Secret for MiniFy (we use OAuth PKCE flow).
+  </Step>
+  <Step title="Enter Client ID in MiniFy">
+    When you first launch MiniFy, you'll be prompted to enter your Spotify Client ID. Paste the value from step 2.
+    
+    MiniFy will store this securely in your OS keyring.
+  </Step>
+</Steps>
+
+<Note>
+  Your Spotify Client ID is stored locally on your machine. MiniFy is open source and makes no external requests except to Spotify's official API.
+</Note>
+
+## Verification
+
+After installation, verify MiniFy is working correctly:
+
+<Steps>
+  <Step title="Launch the app">
+    Open MiniFy from your application menu or desktop shortcut.
+  </Step>
+  <Step title="Check window appearance">
+    You should see a frameless, transparent window with MiniFy's boot screen.
+  </Step>
+  <Step title="Verify credentials storage">
+    MiniFy will prompt for provider selection and Spotify setup on first launch. This confirms credential storage is working.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### MiniFy won't start
+
+**Windows:**
+- Install [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section)
+- Check Windows Event Viewer for error messages
+
+**macOS:**
+- Grant permission via System Settings → Privacy & Security
+- Check Console.app for crash logs
+
+**Linux:**
+- Verify webkit2gtk is installed: `dpkg -l | grep webkit2gtk`
+- Ensure secret service is running: `ps aux | grep keyring`
+- Check logs: `journalctl -xe | grep minify`
+
+### OAuth fails during authentication
+
+1. Verify your Spotify Client ID is correct
+2. Check that redirect URI is set to `http://127.0.0.1:3000/callback` in your Spotify app settings
+3. Ensure port 3000 is not blocked by firewall
+4. Try clearing credentials:
+   ```bash
+   # From the MiniFy source directory:
+   pnpm desktop:clear
+   ```
+
+### Credentials not saving
+
+**Windows:**
+- Open Credential Manager and verify "minify" entries exist
+- Run as administrator if permission issues persist
+
+**macOS:**
+- Open Keychain Access.app and search for "minify"
+- Grant keychain access when prompted
+
+**Linux:**
+- Ensure secret service is running: `systemctl --user status gnome-keyring`
+- Test keyring access: `secret-tool store --label='test' application 'test'`
+
+## Next steps
+
+Now that MiniFy is installed, follow the quick start guide to connect your Spotify account and start playing music:
+
+<Card title="Quick start guide" icon="rocket" href="/quickstart">
+  Connect Spotify and play your first track in under 3 minutes
+</Card>
+
+## Getting help
+
+If you encounter issues not covered here:
+
+<CardGroup cols={2}>
+  <Card title="Report a bug" icon="bug" href="https://github.com/ModioStudio/MiniFy/issues/new?labels=bug">
+    Open an issue on GitHub
+  </Card>
+  <Card title="Join Discord" icon="discord" href="https://discord.gg/haNyuz2zQ5">
+    Get help from the community
+  </Card>
+</CardGroup>

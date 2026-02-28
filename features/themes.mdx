@@ -1,0 +1,426 @@
+---
+title: Themes
+description: Customize MiniFy's appearance with built-in themes and custom theme support
+icon: palette
+---
+
+MiniFy includes 8 built-in themes and supports custom themes via JSON configuration. Themes control colors, shadows, borders, and visual styling across the entire player.
+
+## Built-in Themes
+
+### Dark Theme
+
+The default dark theme with subtle transparency and modern shadows.
+
+```json
+{
+  "name": "dark",
+  "panel": {
+    "background": "rgba(18, 18, 18, 0.85)",
+    "borderRadius": 18,
+    "shadow": "0 14px 36px rgba(0, 0, 0, 0.65)"
+  },
+  "controls": {
+    "iconColor": "#E5E5E5",
+    "iconColorActive": "#FFFFFF"
+  },
+  "playbar": {
+    "trackBg": "rgba(255, 255, 255, 0.18)",
+    "trackFill": "linear-gradient(90deg, #FFFFFF 0%, #CCCCCC 100%)",
+    "thumbColor": "#FFFFFF"
+  },
+  "typography": {
+    "songTitle": { "color": "#FFFFFF", "weight": 600 },
+    "songArtist": { "color": "rgba(255, 255, 255, 0.70)", "weight": 400 }
+  }
+}
+```
+
+**Best for:** Night sessions, reduced eye strain, modern aesthetic
+
+### Light Theme
+
+Clean light theme with gradient background.
+
+```json
+{
+  "name": "light",
+  "panel": {
+    "background": "linear-gradient(to top, #b7b7b7, #c9c9c9, #dadada, #ededed, #ffffff)",
+    "borderRadius": 18,
+    "shadow": "0 12px 30px rgba(0, 0, 0, 0.18)"
+  },
+  "controls": {
+    "iconColor": "#1A1A1A",
+    "iconColorActive": "#000000"
+  },
+  "playbar": {
+    "trackBg": "rgba(0, 0, 0, 0.14)",
+    "trackFill": "linear-gradient(90deg, #444444 0%, #000000 100%)"
+  }
+}
+```
+
+**Best for:** Daytime use, bright environments, minimalist design
+
+### Catppuccin Theme
+
+Pastel-inspired theme with soft blues and purples.
+
+```json
+{
+  "name": "catppuccin",
+  "panel": {
+    "background": "#323443",
+    "shadow": "0 14px 40px rgba(0, 0, 0, 0.55)"
+  },
+  "controls": {
+    "iconColor": "#CDD6F4",
+    "iconColorActive": "#FFFFFF"
+  },
+  "playbar": {
+    "trackFill": "linear-gradient(30deg, hsl(231deg 15% 18%) 0%, hsl(225deg 27% 51%) 100%)",
+    "thumbColor": "linear-gradient(...)",
+    "timeTextColor": "#8BE9FD"
+  },
+  "typography": {
+    "songTitle": { "color": "#FFFFFF" },
+    "songArtist": { "color": "#FF79C6" }
+  },
+  "cover": {
+    "borderColor": "#BD93F9"
+  }
+}
+```
+
+**Best for:** Catppuccin fans, soft color palette lovers, creative environments
+
+### Dracula Theme
+
+Light variant of the popular Dracula color scheme.
+
+```json
+{
+  "name": "dracula",
+  "panel": {
+    "background": "#f8f8f2",
+    "shadow": "0 14px 40px rgba(0, 0, 0, 0.2)"
+  },
+  "controls": {
+    "iconColor": "#50fa7b",
+    "iconColorActive": "#21222c"
+  },
+  "playbar": {
+    "trackBg": "#e6e6e7",
+    "trackFill": "#bd93f9",
+    "thumbColor": "#ff79c6"
+  },
+  "typography": {
+    "songArtist": { "color": "#ff5d5d" }
+  }
+}
+```
+
+**Best for:** Dracula theme users, vibrant color preferences
+
+### YouTube Theme
+
+Inspired by YouTube's dark mode interface.
+
+```json
+{
+  "name": "youtube",
+  "panel": {
+    "background": "#181818",
+    "shadow": "0 14px 40px rgba(0, 0, 0, 0.6)"
+  },
+  "playbar": {
+    "trackBg": "#303030",
+    "trackFill": "#FF0000",
+    "thumbColor": "#FF0000"
+  },
+  "cover": {
+    "borderColor": "#FF0000",
+    "borderRadius": 10
+  },
+  "settings": {
+    "accent": "#FF0000"
+  }
+}
+```
+
+**Best for:** YouTube Music users, red accent lovers
+
+### BMW Theme
+
+BMW M-series inspired color palette with blue, red accents.
+
+```json
+{
+  "name": "bmw",
+  "panel": {
+    "background": "#E6E6E7"
+  },
+  "controls": {
+    "iconColor": "#373485",
+    "iconColorActive": "#373485"
+  },
+  "playbar": {
+    "trackBg": "#1A1D23",
+    "trackFill": "linear-gradient(90deg, #00AEEF 0%, #0033A0 50%, #E10600 100%)",
+    "timeTextColor": "#C52B30"
+  },
+  "typography": {
+    "songTitle": { "color": "#373485" },
+    "songArtist": { "color": "#C52B30CC" }
+  }
+}
+```
+
+**Best for:** Automotive enthusiasts, bold gradient playbar
+
+### Milka Theme
+
+Purple-themed design inspired by Milka chocolate branding.
+
+```json
+{
+  "name": "milka",
+  "panel": {
+    "background": "#2B1B3F"
+  },
+  "playbar": {
+    "trackBg": "#3A255C",
+    "trackFill": "linear-gradient(90deg, #A97CFF 0%, #E4C1FF 100%)",
+    "thumbColor": "#E4C1FF"
+  },
+  "typography": {
+    "songArtist": { "color": "#D5B8FF" }
+  },
+  "cover": {
+    "borderColor": "#E4C1FF",
+    "borderRadius": 14
+  }
+}
+```
+
+**Best for:** Purple color fans, soft dark theme alternative
+
+### ChatGPT Theme
+
+Inspired by ChatGPT's interface with teal/green accents.
+
+```json
+{
+  "name": "chatgpt",
+  "panel": {
+    "background": "#0F172A",
+    "shadow": "0 16px 48px rgba(0, 0, 0, 0.6)"
+  },
+  "playbar": {
+    "trackBg": "#1E293B",
+    "trackFill": "linear-gradient(90deg, #10A37F 0%, #22C55E 100%)",
+    "thumbColor": "#22C55E"
+  },
+  "settings": {
+    "accent": "#10A37F"
+  }
+}
+```
+
+**Best for:** ChatGPT users, teal/green accent preferences
+
+## Theme Structure
+
+Every theme JSON file follows this structure:
+
+<CodeGroup>
+```json Theme Schema
+{
+  "name": "theme-name",
+  
+  "panel": {
+    "background": "color | gradient",
+    "borderRadius": 18,
+    "shadow": "CSS shadow value"
+  },
+  
+  "settings": {
+    "panelBg": "rgba(...)",
+    "panelBorder": "rgba(...)",
+    "text": "#FFFFFF",
+    "textMuted": "rgba(...)",
+    "itemHover": "rgba(...)",
+    "itemActive": "rgba(...)",
+    "accent": "#74C7EC"
+  },
+  
+  "controls": {
+    "iconColor": "#E5E5E5",
+    "iconColorActive": "#FFFFFF",
+    "iconBackground": "transparent",
+    "iconBackgroundHover": "rgba(...)"
+  },
+  
+  "playbar": {
+    "trackBg": "rgba(...)",
+    "trackFill": "color | gradient",
+    "thumbColor": "#FFFFFF",
+    "timeTextColor": "rgba(...)"
+  },
+  
+  "typography": {
+    "songTitle": {
+      "color": "#FFFFFF",
+      "weight": 600
+    },
+    "songArtist": {
+      "color": "rgba(...)",
+      "weight": 400
+    }
+  },
+  
+  "actions": {
+    "iconColor": "#FFFFFF",
+    "iconBackground": "rgba(...)",
+    "iconBackgroundHover": "rgba(...)"
+  },
+  
+  "cover": {
+    "borderColor": "rgba(...)",
+    "borderRadius": 12
+  }
+}
+```
+</CodeGroup>
+
+## CSS Variables
+
+Themes are applied via CSS custom properties:
+
+```css
+/* Panel */
+--player-panel-bg
+--player-panel-radius
+--player-panel-shadow
+
+/* Controls */
+--player-controls-color
+--player-controls-color-active
+
+/* Playbar */
+--player-playbar-track-bg
+--player-playbar-track-fill
+--player-playbar-thumb-color
+--player-playbar-time-color
+
+/* Typography */
+--player-song-title-color
+--player-song-artist-color
+
+/* Actions */
+--player-actions-color
+--player-actions-bg
+--player-actions-bg-hover
+
+/* Cover */
+--player-cover-border-color
+--player-cover-radius
+
+/* Settings Panel */
+--settings-panel-bg
+--settings-panel-border
+--settings-text
+--settings-text-muted
+--settings-header-text
+--settings-item-hover
+--settings-item-active
+--settings-accent
+```
+
+## Creating Custom Themes
+
+<Steps>
+  <Step title="Create theme JSON">
+    Create a new JSON file following the theme structure above
+  </Step>
+  <Step title="Add to themes directory">
+    Place your `custom-theme.json` in the themes directory:
+    ```
+    ~/MiniFy/themes/custom-theme.json
+    ```
+  </Step>
+  <Step title="Load in Settings">
+    Open Settings > Appearance > Custom Themes and import your JSON file
+  </Step>
+</Steps>
+
+<Tip>
+  Start by copying an existing theme and modifying the colors to match your preferences.
+</Tip>
+
+## Theme Validation
+
+MiniFy validates custom themes using the `validateThemeJsonFormat` function:
+
+```typescript
+export function validateThemeJsonFormat(jsonString: string): ThemeValidationResult {
+  try {
+    const parsed = JSON.parse(jsonString) as RawTheme;
+
+    // Must have a name
+    if (!parsed.name || typeof parsed.name !== "string" || parsed.name.trim() === "") {
+      return { valid: false, error: "Theme must have a non-empty 'name' field" };
+    }
+
+    // Validate object types
+    if (parsed.panel !== undefined && typeof parsed.panel !== "object") {
+      return { valid: false, error: "'panel' must be an object" };
+    }
+
+    // ... more validation
+
+    return { valid: true };
+  } catch (e) {
+    return { valid: false, error: "Invalid JSON" };
+  }
+}
+```
+
+## Applying Themes Programmatically
+
+```typescript
+import { applyThemeByName, applyCustomThemeFromJson } from "./loader/themeLoader";
+
+// Apply built-in theme
+applyThemeByName("dark");
+
+// Apply custom theme
+const customThemeJson = JSON.stringify({
+  name: "my-theme",
+  panel: { background: "#1a1a1a" },
+  // ... rest of theme config
+});
+applyCustomThemeFromJson(customThemeJson);
+```
+
+<Note>
+  Theme changes apply immediately without requiring a restart.
+</Note>
+
+## Theme Gallery
+
+<Tabs>
+  <Tab title="Dark Themes">
+    - **Dark**: Default dark theme
+    - **Catppuccin**: Pastel dark theme
+    - **YouTube**: YouTube-inspired dark
+    - **Milka**: Purple dark theme
+    - **ChatGPT**: Teal-accented dark theme
+  </Tab>
+  <Tab title="Light Themes">
+    - **Light**: Clean gradient light theme
+    - **Dracula**: Light Dracula variant
+    - **BMW**: Light grey with blue/red accents
+  </Tab>
+</Tabs>

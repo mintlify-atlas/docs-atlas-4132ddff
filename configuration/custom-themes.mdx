@@ -1,0 +1,447 @@
+---
+title: Custom Themes
+description: Create and manage custom themes with MiniFy's Theme Studio
+---
+
+## Overview
+
+MiniFy allows you to create fully custom themes using JSON configuration. Themes control every aspect of the player's appearance, from colors and gradients to borders and shadows.
+
+## Theme Studio
+
+Access the Theme Studio from Settings to create and edit custom themes with a visual editor. Your custom themes are stored locally and can be exported/imported for sharing.
+
+## Theme Structure
+
+A theme is defined using JSON with the following top-level structure:
+
+```json
+{
+  "name": "my-theme",
+  "panel": { },
+  "settings": { },
+  "controls": { },
+  "playbar": { },
+  "typography": { },
+  "actions": { },
+  "cover": { }
+}
+```
+
+## Theme Schema
+
+### Panel Configuration
+
+Controls the main player window appearance.
+
+```json
+"panel": {
+  "background": "rgba(18, 18, 18, 0.85)",
+  "borderRadius": 18,
+  "shadow": "0 14px 36px rgba(0, 0, 0, 0.65)"
+}
+```
+
+<Accordion title="Panel Properties">
+  - **background** (`string`, optional): CSS color or gradient for the panel background
+  - **borderRadius** (`number`, optional): Corner radius in pixels
+  - **shadow** (`string`, optional): CSS box-shadow value
+  
+  See: `custom_themes.rs:33`
+</Accordion>
+
+### Settings Panel
+
+Styles the settings menu interface.
+
+```json
+"settings": {
+  "panelBg": "rgba(30, 30, 30, 0.55)",
+  "panelBorder": "rgba(255, 255, 255, 0.10)",
+  "text": "#FFFFFF",
+  "textMuted": "rgba(200, 200, 200, 0.70)",
+  "itemHover": "rgba(255, 255, 255, 0.08)",
+  "itemActive": "rgba(255, 255, 255, 0.14)",
+  "accent": "#74C7EC"
+}
+```
+
+<Accordion title="Settings Properties">
+  - **panelBg** (`string`, optional): Settings panel background color
+  - **panelBorder** (`string`, optional): Border color for settings panel
+  - **text** (`string`, optional): Primary text color
+  - **textMuted** (`string`, optional): Secondary/muted text color
+  - **itemHover** (`string`, optional): Background color when hovering over items
+  - **itemActive** (`string`, optional): Background color for active/selected items
+  - **accent** (`string`, optional): Accent color for highlights and interactive elements
+  
+  See: `custom_themes.rs:41`
+</Accordion>
+
+### Controls
+
+Styles playback control buttons.
+
+```json
+"controls": {
+  "iconColor": "#E5E5E5",
+  "iconColorActive": "#FFFFFF",
+  "iconBackground": "transparent",
+  "iconBackgroundHover": "rgba(255, 255, 255, 0.08)"
+}
+```
+
+<Accordion title="Controls Properties">
+  - **iconColor** (`string`, optional): Default icon color
+  - **iconColorActive** (`string`, optional): Icon color when active/pressed
+  - **iconBackground** (`string`, optional): Background behind icons
+  - **iconBackgroundHover** (`string`, optional): Background on hover
+  
+  See: `custom_themes.rs:56`
+</Accordion>
+
+### Playbar
+
+Styles the progress bar and time display.
+
+```json
+"playbar": {
+  "trackBg": "rgba(255, 255, 255, 0.18)",
+  "trackFill": "linear-gradient(90deg, #FFFFFF 0%, #CCCCCC 100%)",
+  "thumbColor": "#FFFFFF",
+  "timeTextColor": "rgba(255, 255, 255, 0.65)"
+}
+```
+
+<Accordion title="Playbar Properties">
+  - **trackBg** (`string`, optional): Background of the progress track
+  - **trackFill** (`string`, optional): Fill color/gradient for elapsed progress
+  - **thumbColor** (`string`, optional): Color of the draggable thumb
+  - **timeTextColor** (`string`, optional): Color for time stamps
+  
+  See: `custom_themes.rs:68`
+</Accordion>
+
+### Typography
+
+Styles song and artist text.
+
+```json
+"typography": {
+  "songTitle": {
+    "color": "#FFFFFF",
+    "weight": 600
+  },
+  "songArtist": {
+    "color": "rgba(255, 255, 255, 0.70)",
+    "weight": 400
+  }
+}
+```
+
+<Accordion title="Typography Properties">
+  - **songTitle.color** (`string`, optional): Song title text color
+  - **songTitle.weight** (`number`, optional): Font weight (100-900)
+  - **songArtist.color** (`string`, optional): Artist name text color
+  - **songArtist.weight** (`number`, optional): Font weight (100-900)
+  
+  See: `custom_themes.rs:80`
+</Accordion>
+
+### Actions
+
+Styles action buttons (like, queue, etc.).
+
+```json
+"actions": {
+  "iconColor": "#FFFFFF",
+  "iconBackground": "rgba(255, 255, 255, 0.06)",
+  "iconBackgroundHover": "rgba(255, 255, 255, 0.14)"
+}
+```
+
+<Accordion title="Actions Properties">
+  - **iconColor** (`string`, optional): Action icon color
+  - **iconBackground** (`string`, optional): Background behind action icons
+  - **iconBackgroundHover** (`string`, optional): Background on hover
+  
+  See: `custom_themes.rs:95`
+</Accordion>
+
+### Cover
+
+Styles the album artwork display.
+
+```json
+"cover": {
+  "borderColor": "rgba(255, 255, 255, 0.18)",
+  "borderRadius": 12
+}
+```
+
+<Accordion title="Cover Properties">
+  - **borderColor** (`string`, optional): Border color around album art
+  - **borderRadius** (`number`, optional): Corner radius in pixels
+  
+  See: `custom_themes.rs:105`
+</Accordion>
+
+## Complete Theme Examples
+
+### Dark Theme
+
+```json dark.json
+{
+  "name": "dark",
+  "panel": {
+    "background": "rgba(18, 18, 18, 0.85)",
+    "borderRadius": 18,
+    "shadow": "0 14px 36px rgba(0, 0, 0, 0.65)"
+  },
+  "settings": {
+    "panelBg": "rgba(30, 30, 30, 0.55)",
+    "panelBorder": "rgba(255, 255, 255, 0.10)",
+    "text": "#FFFFFF",
+    "textMuted": "rgba(200, 200, 200, 0.70)",
+    "itemHover": "rgba(255, 255, 255, 0.08)",
+    "itemActive": "rgba(255, 255, 255, 0.14)",
+    "accent": "#74C7EC"
+  },
+  "controls": {
+    "iconColor": "#E5E5E5",
+    "iconColorActive": "#FFFFFF",
+    "iconBackground": "transparent",
+    "iconBackgroundHover": "rgba(255, 255, 255, 0.08)"
+  },
+  "playbar": {
+    "trackBg": "rgba(255, 255, 255, 0.18)",
+    "trackFill": "linear-gradient(90deg, #FFFFFF 0%, #CCCCCC 100%)",
+    "thumbColor": "#FFFFFF",
+    "timeTextColor": "rgba(255, 255, 255, 0.65)"
+  },
+  "typography": {
+    "songTitle": {
+      "color": "#FFFFFF",
+      "weight": 600
+    },
+    "songArtist": {
+      "color": "rgba(255, 255, 255, 0.70)",
+      "weight": 400
+    }
+  },
+  "actions": {
+    "iconColor": "#FFFFFF",
+    "iconBackground": "rgba(255, 255, 255, 0.06)",
+    "iconBackgroundHover": "rgba(255, 255, 255, 0.14)"
+  },
+  "cover": {
+    "borderColor": "rgba(255, 255, 255, 0.18)",
+    "borderRadius": 12
+  }
+}
+```
+
+### Dracula Theme
+
+```json dracula.json
+{
+  "name": "dracula",
+  "panel": {
+    "background": "#f8f8f2",
+    "shadow": "0 14px 40px rgba(0, 0, 0, 0.2)"
+  },
+  "settings": {
+    "panelBg": "rgba(248, 248, 242, 0.55)",
+    "panelBorder": "rgba(33, 34, 44, 0.10)",
+    "text": "#21222c",
+    "textMuted": "rgba(33, 34, 44, 0.7)",
+    "itemHover": "rgba(139, 233, 253, 0.05)",
+    "itemActive": "rgba(139, 233, 253, 0.15)",
+    "accent": "#BD93F9"
+  },
+  "controls": {
+    "iconColor": "#50fa7b",
+    "iconColorActive": "#21222c",
+    "iconBackground": "transparent",
+    "iconBackgroundHover": "rgba(80, 250, 123, 0.1)"
+  },
+  "playbar": {
+    "trackBg": "#e6e6e7",
+    "trackFill": "#bd93f9",
+    "thumbColor": "#ff79c6",
+    "timeTextColor": "#21222c"
+  },
+  "typography": {
+    "songTitle": {
+      "color": "#21222c",
+      "weight": 600
+    },
+    "songArtist": {
+      "color": "#ff5d5d",
+      "weight": 400
+    }
+  },
+  "actions": {
+    "iconColor": "#8be9fd",
+    "iconBackground": "rgba(139, 233, 253, 0.05)",
+    "iconBackgroundHover": "rgba(139, 233, 253, 0.15)"
+  },
+  "cover": {
+    "borderColor": "#21222c",
+    "borderRadius": 12
+  }
+}
+```
+
+## Creating Custom Themes
+
+<Steps>
+  <Step title="Open Theme Studio">
+    Navigate to Settings > Appearance > Theme Studio
+  </Step>
+  
+  <Step title="Design your theme">
+    Use the visual editor to customize colors, gradients, and styles. Changes preview in real-time.
+  </Step>
+  
+  <Step title="Name your theme">
+    Give your theme a unique name. This will be used as the filename and display name.
+  </Step>
+  
+  <Step title="Save">
+    Click Save to store your theme. It will be added to your theme list.
+  </Step>
+</Steps>
+
+<Note>
+  Theme names are automatically sanitized. Only alphanumeric characters, hyphens, and underscores are allowed. The name is converted to lowercase for the filename.
+  
+  See: `custom_themes.rs:13`
+</Note>
+
+## Theme Storage
+
+Custom themes are stored in your app data directory:
+
+<CodeGroup>
+```bash Windows
+%APPDATA%\minify\themes\{theme-name}.json
+```
+
+```bash macOS
+~/Library/Application Support/minify/themes/{theme-name}.json
+```
+
+```bash Linux
+~/.local/share/minify/themes/{theme-name}.json
+```
+</CodeGroup>
+
+## Managing Themes
+
+### Loading Themes
+
+All custom themes in the themes directory are automatically loaded when MiniFy starts. See: `custom_themes.rs:128`
+
+### Exporting Themes
+
+To share a theme:
+
+1. Open Theme Studio
+2. Select your theme from the list
+3. Click "Export" to copy the JSON
+4. Share the JSON with others
+
+See: `custom_themes.rs:167`
+
+### Importing Themes
+
+To import a shared theme:
+
+1. Open Theme Studio
+2. Click "Import"
+3. Paste the theme JSON
+4. Click "Validate & Save"
+
+See: `custom_themes.rs:181`
+
+### Deleting Themes
+
+Remove unwanted themes:
+
+1. Open Theme Studio
+2. Select the theme to delete
+3. Click the delete icon
+4. Confirm deletion
+
+See: `custom_themes.rs:152`
+
+<Warning>
+  You cannot delete built-in themes (dark, light, dracula, catppuccin, etc.). Only custom themes can be removed.
+</Warning>
+
+## Advanced Techniques
+
+### Using Gradients
+
+Many properties support CSS gradients:
+
+```json
+"playbar": {
+  "trackFill": "linear-gradient(90deg, #FF6B6B 0%, #4ECDC4 100%)"
+}
+```
+
+### Transparency
+
+Use RGBA colors for transparency effects:
+
+```json
+"panel": {
+  "background": "rgba(18, 18, 18, 0.85)"
+}
+```
+
+### Complex Gradients
+
+You can create multi-stop gradients:
+
+```json
+"playbar": {
+  "trackFill": "linear-gradient(30deg, hsl(231deg 15% 18%) 0%, hsl(231deg 16% 21%) 18%, hsl(230deg 18% 24%) 31%, hsl(229deg 19% 27%) 41%, hsl(228deg 21% 33%) 57%)"
+}
+```
+
+## Validation
+
+Themes are validated against the schema when saved. Common validation errors:
+
+- Invalid JSON syntax
+- Missing required `name` field
+- Invalid color format
+- Invalid number values
+
+See: `custom_themes.rs:181`
+
+## Troubleshooting
+
+### Theme not appearing
+
+1. Verify the JSON file is in the themes directory
+2. Check that the file has a `.json` extension
+3. Ensure the JSON is valid (use a JSON validator)
+4. Restart MiniFy to reload themes
+
+### Theme looks broken
+
+1. Validate your JSON structure matches the schema
+2. Ensure all color values are valid CSS colors
+3. Check that numeric values (borderRadius, weight) are valid numbers
+4. Try exporting a built-in theme as a reference
+
+### Theme won't save
+
+1. Check file permissions on the themes directory
+2. Ensure the theme name only contains valid characters
+3. Verify the JSON is valid
+4. Make sure the themes directory exists

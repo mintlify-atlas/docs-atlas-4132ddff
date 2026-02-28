@@ -1,0 +1,409 @@
+---
+title: AI DJ
+description: Let AI curate your music with multi-provider support and intelligent music tools
+icon: robot
+---
+
+The AI DJ feature uses language models to understand your music preferences and control playback through natural conversation. It supports OpenAI, Anthropic, Google, and Groq providers.
+
+## Supported AI Providers
+
+<CardGroup cols={2}>
+  <Card title="OpenAI" icon="openai">
+    **Model:** `gpt-4o-mini`
+    
+    Fast and cost-effective for music recommendations
+  </Card>
+  <Card title="Anthropic" icon="brain">
+    **Model:** `claude-3-haiku-20240307`
+    
+    Quick responses with thoughtful music curation
+  </Card>
+  <Card title="Google" icon="google">
+    **Model:** `gemini-1.5-flash`
+    
+    Efficient multi-modal model for music understanding
+  </Card>
+  <Card title="Groq" icon="bolt">
+    **Model:** `llama-3.1-8b-instant`
+    
+    Ultra-fast inference with open-source models
+  </Card>
+</CardGroup>
+
+## Setup
+
+<Steps>
+  <Step title="Add API Key">
+    Go to Settings > AI DJ and add your API key for your preferred provider
+  </Step>
+  <Step title="Select Provider">
+    Choose which provider to use (OpenAI, Anthropic, Google, or Groq)
+  </Step>
+  <Step title="Open AI DJ">
+    Press `Ctrl+D` or right-click and select "AI DJ" to start
+  </Step>
+</Steps>
+
+## AI Music Tools
+
+The AI DJ has access to these tools to control your music:
+
+### Track Playback
+
+<AccordionGroup>
+  <Accordion title="getCurrentTrack" icon="music">
+    Get information about the currently playing track.
+    
+    **Returns:**
+    - Track name and artists
+    - Track ID and URI
+    - Playback state (playing/paused)
+    - Progress and duration in milliseconds
+    - Provider (Spotify or YouTube)
+    
+    **Example:**
+    ```json
+    {
+      "success": true,
+      "track": "Blinding Lights by The Weeknd",
+      "trackId": "0VjIjW4GlUZAMYd2vXMi3b",
+      "isPlaying": true,
+      "progressMs": 45000,
+      "durationMs": 200040,
+      "provider": "spotify"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="searchTracks" icon="magnifying-glass">
+    Search for tracks by name, artist, or query.
+    
+    **Parameters:**
+    - `query` (string): Search query (e.g., "upbeat pop" or "artist name")
+    - `limit` (number): Number of results to return (1-20, default: 5)
+    
+    **Returns:** TOON format tracks
+    ```
+    [3]{n,a,u}:
+      Blinding Lights,The Weeknd,spotify:track:0VjIjW4GlUZAMYd2vXMi3b
+      Save Your Tears,The Weeknd,spotify:track:5QO79kh1waicV47BqGRL3g
+      Starboy,The Weeknd & Daft Punk,spotify:track:7MXVkk9YMctZqd1Srtv4MB
+    ```
+    
+    **Example:**
+    ```typescript
+    await searchTracks({
+      query: "The Weeknd",
+      limit: 5
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="playTrack" icon="play">
+    Play a specific track using its URI.
+    
+    **Parameters:**
+    - `trackUri` (string): Spotify URI (`spotify:track:ID`) or YouTube URI (`youtube:video:ID`)
+    
+    **Returns:**
+    ```json
+    {
+      "success": true,
+      "message": "Now playing track: spotify:track:0VjIjW4GlUZAMYd2vXMi3b"
+    }
+    ```
+    
+    <Tip>
+      This is the **default choice** for most music requests. Use this for specific song requests like "play Blinding Lights" or "put on some Daft Punk".
+    </Tip>
+  </Accordion>
+</AccordionGroup>
+
+### User Music Profile
+
+<AccordionGroup>
+  <Accordion title="getRecentlyPlayed" icon="clock">
+    Get the user's recently played tracks.
+    
+    **Parameters:**
+    - `limit` (number): Number of tracks to retrieve (1-50, default: 10)
+    
+    **Returns:** TOON format tracks
+    ```json
+    {
+      "success": true,
+      "tracks": "[10]{n,a,u}:\n  Track 1,Artist 1,spotify:track:ID1\n  ...",
+      "count": 10
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="getTopTracks" icon="fire">
+    Get the user's most played tracks over a time period.
+    
+    **Parameters:**
+    - `timeRange`: `short_term` (4 weeks), `medium_term` (6 months), or `long_term` (years)
+    - `limit` (number): Number of tracks (1-50, default: 20)
+    
+    **Returns:** TOON format tracks
+    ```json
+    {
+      "success": true,
+      "timeRange": "medium_term",
+      "tracks": "[20]{n,a,u}:\n  ...",
+      "count": 20
+    }
+    ```
+    
+    <Note>
+      Only available for Spotify users with sufficient listening history.
+    </Note>
+  </Accordion>
+
+  <Accordion title="getTopArtists" icon="user-group">
+    Get the user's most listened to artists.
+    
+    **Parameters:**
+    - `timeRange`: `short_term`, `medium_term`, or `long_term`
+    - `limit` (number): Number of artists (1-50, default: 15)
+    
+    **Returns:** TOON format artists with genres and popularity
+    ```json
+    {
+      "success": true,
+      "timeRange": "medium_term",
+      "artists": "[15]{n,g,p,id}:\n  The Weeknd,pop|r&b,95,1Xyo4u8uXC1ZmMpatF05PJ\n  ...",
+      "topGenres": "pop, r&b, dance, electronic, indie",
+      "count": 15
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### AI Queue (Continuous Playback)
+
+<AccordionGroup>
+  <Accordion title="startAIQueueWithMood" icon="list-music">
+    Start continuous music playback based on a mood or genre.
+    
+    **When to use:**
+    - User wants continuous music ("play music for working")
+    - Activity-based requests ("workout music", "study vibes")
+    - Keywords: "continuous", "keep playing", "background music", "mix", "playlist"
+    
+    **Parameters:**
+    - `mood` (string): The mood, genre, or context (e.g., "relaxing lofi beats for focus", "upbeat pop for working out")
+    
+    **Returns:**
+    ```json
+    {
+      "success": true,
+      "message": "AI Queue started with mood: 'lofi for studying'. Music will play continuously."
+    }
+    ```
+    
+    **Example:**
+    ```typescript
+    await startAIQueueWithMood({ mood: "energetic workout music" });
+    ```
+    
+    <Warning>
+      Only use this when the user **explicitly** wants continuous playback. For single track requests, use `playTrack` instead.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="stopAIQueuePlayback" icon="stop">
+    Stop the AI Queue if it's currently running.
+    
+    **Returns:**
+    ```json
+    {
+      "success": true,
+      "message": "AI Queue stopped"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="getAIQueueStatus" icon="circle-info">
+    Check if the AI Queue is active and get its status.
+    
+    **Returns:**
+    ```json
+    {
+      "success": true,
+      "isActive": true,
+      "isLoading": false,
+      "queueLength": 15,
+      "remaining": 12,
+      "nextTrack": "Track Name - Artist",
+      "provider": "spotify"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## AI DJ System Prompt
+
+The AI DJ is configured with specialized instructions:
+
+```typescript
+export const AI_DJ_SYSTEM_PROMPT = `You are an AI DJ assistant for MiniFy, a desktop music player app.
+
+Your role is to help users discover and play music based on their listening history, preferences, and mood.
+
+## Data Format
+Tool results use TOON format (Token-Oriented Object Notation) for efficiency.
+Track format: n=name, a=artists, u=spotify URI (use u value with playTrack)
+
+## CRITICAL: Single Track vs AI Queue Decision
+
+### SINGLE TRACK (use playTrack) - DEFAULT CHOICE
+Use playTrack for:
+- Specific song requests: "play Blinding Lights"
+- Artist + song: "play Shape of You by Ed Sheeran"
+- "Play this song", "play that track"
+- "Play something by [artist]" (search and play one track)
+
+### AI QUEUE (use startAIQueueWithMood) - ONLY WHEN EXPLICITLY NEEDED
+Use AI Queue ONLY when user explicitly wants continuous/endless music:
+- "Play music for working/studying/gym" (activity-based continuous)
+- "Start a playlist of..." or "make me a mix of..."
+- Keywords: "continuous", "keep playing", "for hours", "background music"
+
+### IF UNSURE: Default to playTrack (single song)
+The autoplay system will automatically queue similar songs after the track ends.
+
+## Personality
+- Be enthusiastic about music
+- Act quickly - don't over-explain
+- When user asks to "play X", just play it immediately
+- Keep responses short and action-focused`;
+```
+
+## Provider Configuration
+
+Create AI model instances for each provider:
+
+```typescript
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAI } from "@ai-sdk/openai";
+
+export function createAIModel(providerType: AIProviderType, apiKey: string): LanguageModelV1 {
+  switch (providerType) {
+    case "openai": {
+      const openai = createOpenAI({ apiKey });
+      return openai("gpt-4o-mini");
+    }
+    case "anthropic": {
+      const anthropic = createAnthropic({ apiKey });
+      return anthropic("claude-3-haiku-20240307");
+    }
+    case "google": {
+      const google = createGoogleGenerativeAI({ apiKey });
+      return google("gemini-1.5-flash");
+    }
+    case "groq": {
+      const groq = createOpenAI({
+        apiKey,
+        baseURL: "https://api.groq.com/openai/v1",
+      });
+      return groq("llama-3.1-8b-instant");
+    }
+  }
+}
+```
+
+## Example Conversations
+
+<Tabs>
+  <Tab title="Single Track Request">
+    **User:** Play Blinding Lights
+    
+    **AI DJ:**
+    1. Calls `searchTracks({ query: "Blinding Lights", limit: 1 })`
+    2. Gets track URI: `spotify:track:0VjIjW4GlUZAMYd2vXMi3b`
+    3. Calls `playTrack({ trackUri: "spotify:track:0VjIjW4GlUZAMYd2vXMi3b" })`
+    4. Responds: "Now playing Blinding Lights by The Weeknd!"
+  </Tab>
+  
+  <Tab title="Continuous Playback">
+    **User:** Play some lofi music for studying
+    
+    **AI DJ:**
+    1. Recognizes continuous playback request ("for studying")
+    2. Calls `startAIQueueWithMood({ mood: "relaxing lofi beats for focus" })`
+    3. Responds: "Started a lofi study session for you! The queue will keep the music flowing."
+    4. AI Queue automatically generates and plays matching tracks
+  </Tab>
+  
+  <Tab title="Recommendation">
+    **User:** What should I listen to right now?
+    
+    **AI DJ:**
+    1. Calls `getTopTracks({ timeRange: "short_term", limit: 10 })`
+    2. Calls `getRecentlyPlayed({ limit: 5 })`
+    3. Analyzes user's taste
+    4. Calls `searchTracks({ query: "[recommended genre/artist]", limit: 3 })`
+    5. Calls `playTrack({ trackUri: "..." })`
+    6. Responds: "Based on your recent listening, I think you'll love this track!"
+  </Tab>
+  
+  <Tab title="Current Track Info">
+    **User:** What's playing?
+    
+    **AI DJ:**
+    1. Calls `getCurrentTrack()`
+    2. Responds: "You're listening to 'Blinding Lights' by The Weeknd. It's at 0:45 out of 3:20."
+  </Tab>
+</Tabs>
+
+## TOON Format
+
+AI DJ uses TOON (Token-Oriented Object Notation) for efficient data transfer:
+
+```typescript
+import { encode } from "@toon-format/toon";
+
+function formatTrackForToon(track: UnifiedTrack): { n: string; a: string; u: string } {
+  return {
+    n: track.name,
+    a: track.artists.map((a) => a.name).join(", "),
+    u: track.uri,
+  };
+}
+
+function encodeTracks(tracks: UnifiedTrack[]): string {
+  return encode(tracks.map(formatTrackForToon));
+}
+```
+
+**Example TOON output:**
+```
+[3]{n,a,u}:
+  Blinding Lights,The Weeknd,spotify:track:0VjIjW4GlUZAMYd2vXMi3b
+  Save Your Tears,The Weeknd,spotify:track:5QO79kh1waicV47BqGRL3g
+  Starboy,The Weeknd & Daft Punk,spotify:track:7MXVkk9YMctZqd1Srtv4MB
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Default to playTrack" icon="music">
+    Use `playTrack` for most requests. MiniFy's autoplay feature handles queuing similar tracks automatically.
+  </Card>
+  <Card title="Reserve AI Queue" icon="list">
+    Only use `startAIQueueWithMood` when users explicitly want continuous playback for activities.
+  </Card>
+  <Card title="Be Quick" icon="bolt">
+    Don't over-explain - users want music fast. Just play the track and give a brief confirmation.
+  </Card>
+  <Card title="Use TOON Data" icon="database">
+    Parse TOON format from tool results to extract track URIs for `playTrack` calls.
+  </Card>
+</CardGroup>
+
+<Tip>
+  The AI DJ works with both Spotify and YouTube providers. All tools automatically use the active provider.
+</Tip>

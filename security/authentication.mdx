@@ -1,0 +1,341 @@
+---
+title: 'Authentication'
+description: 'OAuth PKCE flow and secure token management in MiniFy'
+---
+
+# Authentication
+
+MiniFy implements OAuth 2.0 with PKCE (Proof Key for Code Exchange) for secure Spotify authentication. This industry-standard approach ensures your credentials never pass through MiniFy's servers.
+
+## OAuth PKCE Flow
+
+### What is PKCE?
+
+PKCE enhances OAuth security for desktop applications by eliminating the need for a client secret. Instead, it uses dynamically generated cryptographic proofs that can only be used once.
+
+<Info>
+PKCE is recommended by OAuth 2.0 best practices for all public clients, including desktop and mobile applications.
+</Info>
+
+### Authentication Process
+
+<Steps>
+  <Step title="Generate Code Verifier">
+    MiniFy generates a 64-character random string using URL-safe characters:
+    
+    ```rust
+    // spotify_auth.rs:158-167
+    fn generate_code_verifier() -> String {
+        const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+        let mut rng = rand::rng();
+        let mut verifier = String::with_capacity(64);
+        for _ in 0..64 {
+            let idx = (rng.next_u32() as usize) % CHARSET.len();
+            verifier.push(CHARSET[idx] as char);
+        }
+        verifier
+    }
+    ```
+    
+    This verifier is kept secret on your device throughout the authentication process.
+  </Step>
+
+  <Step title="Create Code Challenge">
+    The verifier is hashed using SHA-256 and base64-encoded:
+    
+    ```rust
+    // spotify_auth.rs:169-174
+    fn generate_code_challenge(verifier: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(verifier.as_bytes());
+        let hash = hasher.finalize();
+        urlsafe_b64_no_pad(&hash)
+    }
+    ```
+    
+    The challenge is sent to Spotify, but the verifier stays on your device.
+  </Step>
+
+  <Step title="Start OAuth Flow">
+    MiniFy starts a local server on `127.0.0.1:3000` and opens your browser:
+    
+    ```rust
+    // spotify_auth.rs:389-495
+    #[tauri::command]
+    pub async fn start_oauth_flow(app: AppHandle) -> Result<(), String> {
+        // Generate PKCE parameters
+        let code_verifier = generate_code_verifier();
+        let code_challenge = generate_code_challenge(&code_verifier);
+        
+        // Generate state nonce for CSRF protection
+        let mut state_bytes = [0u8; 16];
+        rand::rng().fill_bytes(&mut state_bytes);
+        let state_nonce = hex::encode(state_bytes);
+        
+        // Start local callback server
+        let addr: SocketAddr = "127.0.0.1:3000".parse().unwrap();
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        
+        // Open browser to Spotify authorization
+        webbrowser::open(&auth_url)?;
+    }
+    ```
+    
+    The local server only accepts connections from `127.0.0.1` (localhost).
+  </Step>
+
+  <Step title="User Authorization">
+    You authorize MiniFy in your browser. Spotify redirects back to `http://127.0.0.1:3000/callback` with:
+    - An authorization code
+    - The state parameter (for CSRF validation)
+  </Step>
+
+  <Step title="Validate State">
+    MiniFy validates the state parameter to prevent CSRF attacks:
+    
+    ```rust
+    // spotify_auth.rs:524-527
+    let state_param = query.get("state").cloned().unwrap_or_default();
+    if state_param != st.state_nonce {
+        return Html(error_page("This login session has expired."));
+    }
+    ```
+  </Step>
+
+  <Step title="Exchange Code for Tokens">
+    MiniFy exchanges the authorization code and code verifier for tokens:
+    
+    ```rust
+    // spotify_auth.rs:326-369
+    async fn exchange_code_for_tokens(state: &AuthState, code: &str) -> Result<SpotifyTokens, String> {
+        let form = [
+            ("grant_type", "authorization_code"),
+            ("code", code),
+            ("redirect_uri", "http://127.0.0.1:3000/callback"),
+            ("client_id", &state.client_id),
+            ("code_verifier", &state.code_verifier),  // PKCE proof
+        ];
+        
+        let response = client
+            .post("https://accounts.spotify.com/api/token")
+            .form(&form)
+            .send()
+            .await?;
+        
+        // Returns access_token, refresh_token, expires_in
+    }
+    ```
+    
+    Spotify verifies the code_verifier matches the original code_challenge before issuing tokens.
+  </Step>
+
+  <Step title="Store Tokens Securely">
+    Tokens are stored in your OS keyring (see [Credential Storage](/security/credential-storage)):
+    
+    ```rust
+    // spotify_auth.rs:216-241
+    async fn save_tokens(tokens: &SpotifyTokens) -> Result<(), String> {
+        tokio::task::spawn_blocking(move || {
+            entry(ACCESS_TOKEN_KEY).set_password(&access_token)?;
+            entry(REFRESH_TOKEN_KEY).set_password(&refresh_token)?;
+            entry(TOKEN_EXPIRY_KEY).set_password(&expires_at)?;
+        }).await
+    }
+    ```
+  </Step>
+</Steps>
+
+## Token Management
+
+### Access Token Expiration
+
+Access tokens expire after 1 hour. MiniFy automatically refreshes them before expiration:
+
+```rust
+// spotify_auth.rs:643-656
+pub fn spawn_token_refresh_task(app: AppHandle) {
+    rt::spawn(async move {
+        loop {
+            sleep(std::time::Duration::from_secs(300)).await;  // Check every 5 minutes
+            if let Ok(tokens) = get_tokens().await {
+                let now = Utc::now().timestamp();
+                if now + 300 >= tokens.expires_at {  // Refresh if expires in 5 min
+                    let _ = refresh_access_token().await;
+                }
+            }
+        }
+    });
+}
+```
+
+### Token Refresh Process
+
+When refreshing, MiniFy uses the stored refresh token:
+
+```rust
+// spotify_auth.rs:596-641
+#[tauri::command]
+pub async fn refresh_access_token() -> Result<SpotifyTokens, String> {
+    let tokens = get_tokens().await?;
+    let client_id = get_stored_spotify_client_id().await?;
+    
+    let form = [
+        ("grant_type", "refresh_token"),
+        ("refresh_token", tokens.refresh_token.as_str()),
+        ("client_id", client_id.as_str()),
+    ];
+    
+    let response = client
+        .post("https://accounts.spotify.com/api/token")
+        .form(&form)
+        .send()
+        .await?;
+    
+    // Save new tokens to keyring
+    save_tokens(&updated).await?;
+}
+```
+
+<Note>
+Refresh tokens don't expire unless you revoke MiniFy's access in your Spotify account settings.
+</Note>
+
+### Token Validation
+
+After obtaining tokens, MiniFy validates them with Spotify:
+
+```rust
+// spotify_auth.rs:243-258
+pub async fn verify_spotify_access(access_token: &str) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let response = client
+        .get("https://api.spotify.com/v1/me")
+        .bearer_auth(access_token)
+        .send()
+        .await?;
+    
+    if !response.status().is_success() {
+        return Err("Verification failed");
+    }
+    Ok(())
+}
+```
+
+## Security Features
+
+### In-Memory Caching
+
+Tokens are cached in memory to reduce keyring access:
+
+```rust
+// spotify_auth.rs:23-27
+lazy_static::lazy_static! {
+    static ref TOKENS_CACHE: Arc<Mutex<Option<SpotifyTokens>>> = Arc::new(Mutex::new(None));
+}
+```
+
+<Warning>
+The in-memory cache is cleared when you clear credentials or restart the app. Tokens are never written to disk in plaintext.
+</Warning>
+
+### State Nonce (CSRF Protection)
+
+A random 16-byte nonce prevents cross-site request forgery:
+
+```rust
+// spotify_auth.rs:408-410
+let mut state_bytes = [0u8; 16];
+rand::rng().fill_bytes(&mut state_bytes);
+let state_nonce = hex::encode(state_bytes);
+```
+
+The state is validated when Spotify redirects back to MiniFy.
+
+### OAuth Flow Timeout
+
+The authentication flow times out after 5 minutes:
+
+```rust
+// spotify_auth.rs:470-472
+_ = sleep(std::time::Duration::from_secs(300)) => {
+    let _ = app_handle.emit("oauth-failed", json!({ "error": "OAuth timeout" }));
+}
+```
+
+### Cancellation Support
+
+You can cancel the OAuth flow at any time:
+
+```rust
+// spotify_auth.rs:375-386
+#[tauri::command]
+pub async fn cancel_oauth_flow() -> Result<(), String> {
+    // Clear auth state
+    if let Ok(mut s) = AUTH_STATE.lock() {
+        *s = None;
+    }
+    // Shutdown local server
+    if let Ok(mut shutdown) = OAUTH_SHUTDOWN.lock() {
+        if let Some(tx) = shutdown.take() {
+            let _ = tx.send(());
+        }
+    }
+}
+```
+
+## Permissions Requested
+
+MiniFy requests these Spotify scopes:
+
+<Tabs>
+  <Tab title="Playback Control">
+    - `user-read-playback-state` - Read current playback state
+    - `user-modify-playback-state` - Control playback (play, pause, skip)
+    - `user-read-currently-playing` - Read currently playing track
+  </Tab>
+  
+  <Tab title="Playlist Management">
+    - `playlist-read-private` - Read private playlists
+    - `playlist-modify-public` - Modify public playlists
+    - `playlist-modify-private` - Modify private playlists
+  </Tab>
+  
+  <Tab title="User Data">
+    - `user-top-read` - Read top artists and tracks
+    - `user-read-recently-played` - Read recently played tracks
+    - `user-library-read` - Read saved tracks and albums
+  </Tab>
+</Tabs>
+
+## Clearing Credentials
+
+To sign out and remove all stored credentials:
+
+```rust
+// spotify_auth.rs:300-324
+#[tauri::command]
+pub async fn clear_credentials() -> Result<(), String> {
+    // Clear in-memory caches
+    clear_cached_client_id();
+    clear_cached_tokens();
+    clear_cached_music_provider();
+    
+    // Delete from keyring
+    tokio::task::spawn_blocking(|| {
+        if let Ok(e) = entry(ACCESS_TOKEN_KEY) { let _ = e.delete_password(); }
+        if let Ok(e) = entry(REFRESH_TOKEN_KEY) { let _ = e.delete_password(); }
+        if let Ok(e) = entry(TOKEN_EXPIRY_KEY) { let _ = e.delete_password(); }
+        if let Ok(e) = entry(MUSIC_PROVIDER_KEY) { let _ = e.delete_password(); }
+        if let Ok(e) = entry(SPOTIFY_CLIENT_ID_KEY) { let _ = e.delete_password(); }
+    }).await
+}
+```
+
+<Info>
+Clearing credentials also cancels any in-progress OAuth flow and shuts down the local callback server.
+</Info>
+
+## Related Documentation
+
+- [Credential Storage](/security/credential-storage) - How tokens are stored securely
+- [Privacy Policy](/security/privacy) - What data MiniFy collects and stores

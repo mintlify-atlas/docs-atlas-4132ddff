@@ -1,0 +1,499 @@
+---
+title: Contributing
+description: Guidelines for contributing to MiniFy
+---
+
+## Welcome
+
+Thank you for your interest in contributing to MiniFy. We appreciate contributions of all kinds, from bug reports to feature implementations. This guide will help you get started.
+
+## Before You Start
+
+<Steps>
+  <Step title="Discuss First">
+    Before starting work on a significant change, open a GitHub issue to discuss your idea with maintainers.
+    
+    <CardGroup cols={2}>
+      <Card title="Report Bug" icon="bug" href="https://github.com/ModioStudio/MiniFy/issues/new?labels=bug">
+        Found a bug? Let us know
+      </Card>
+      
+      <Card title="Request Feature" icon="lightbulb" href="https://github.com/ModioStudio/MiniFy/issues/new?labels=enhancement">
+        Have an idea? Suggest it
+      </Card>
+    </CardGroup>
+  </Step>
+  
+  <Step title="Check the Roadmap">
+    Review the [project board](https://github.com/orgs/ModioStudio/projects/2) to see planned features and current priorities.
+  </Step>
+  
+  <Step title="Read the Docs">
+    Familiarize yourself with the [architecture](/developer/architecture) and [build process](/developer/building) before diving into code.
+  </Step>
+</Steps>
+
+## Development Setup
+
+<Note>
+  See [Building from Source](/developer/building) for detailed setup instructions.
+</Note>
+
+### Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/ModioStudio/MiniFy.git
+cd MiniFy
+
+# Install dependencies
+pnpm install
+
+# (Optional) Install git hooks
+pnpm dlx lefthook install
+
+# Start development
+pnpm desktop:dev
+```
+
+### Prerequisites
+
+- Node.js 18+
+- pnpm 9+
+- Rust toolchain (latest stable)
+- Platform-specific Tauri dependencies
+
+## Contribution Workflow
+
+<Steps>
+  <Step title="Fork and Clone">
+    Fork the repository on GitHub, then clone your fork:
+    
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/MiniFy.git
+    cd MiniFy
+    git remote add upstream https://github.com/ModioStudio/MiniFy.git
+    ```
+  </Step>
+  
+  <Step title="Create a Branch">
+    Create a descriptive branch for your changes:
+    
+    ```bash
+    git checkout -b fix/spotify-polling-rate
+    # or
+    git checkout -b feat/new-player-layout
+    ```
+    
+    **Branch naming conventions:**
+    - `fix/` - Bug fixes
+    - `feat/` - New features
+    - `docs/` - Documentation changes
+    - `refactor/` - Code refactoring
+    - `test/` - Test additions/changes
+  </Step>
+  
+  <Step title="Make Changes">
+    Write your code following the project's style and conventions.
+    
+    <Note>
+      Run `pnpm lint` frequently to catch issues early.
+    </Note>
+  </Step>
+  
+  <Step title="Test Your Changes">
+    Test thoroughly in development mode:
+    
+    ```bash
+    # Desktop app
+    pnpm desktop:dev
+    
+    # Run linter
+    pnpm lint
+    
+    # Format code
+    pnpm format
+    ```
+    
+    <Warning>
+      Always test production builds before submitting:
+      ```bash
+      pnpm desktop:build
+      ```
+    </Warning>
+  </Step>
+  
+  <Step title="Commit Changes">
+    Write clear, concise commit messages:
+    
+    ```bash
+    git add .
+    git commit -m "fix: resolve polling rate issue when player is paused"
+    ```
+    
+    **Commit message format:**
+    - `fix: <description>` - Bug fix
+    - `feat: <description>` - New feature
+    - `docs: <description>` - Documentation
+    - `refactor: <description>` - Code refactoring
+    - `style: <description>` - Code style/formatting
+    - `test: <description>` - Tests
+    - `chore: <description>` - Build/tooling
+  </Step>
+  
+  <Step title="Push and Create PR">
+    Push your branch and create a pull request:
+    
+    ```bash
+    git push origin fix/spotify-polling-rate
+    ```
+    
+    Then open a PR on GitHub with:
+    - Clear title describing the change
+    - Description explaining the problem and solution
+    - Steps to test the changes
+    - Link to related issues
+  </Step>
+</Steps>
+
+## Code Style Guidelines
+
+### TypeScript/React
+
+<CardGroup cols={2}>
+  <Card title="Biome" icon="broom">
+    We use Biome for linting and formatting (replaces ESLint + Prettier)
+    
+    ```bash
+    pnpm check
+    pnpm format
+    ```
+  </Card>
+  
+  <Card title="TypeScript" icon="code">
+    Always use TypeScript. Avoid `any` types.
+    
+    ```typescript
+    // Good
+    const track: SpotifyTrack = {...}
+    
+    // Avoid
+    const track: any = {...}
+    ```
+  </Card>
+</CardGroup>
+
+### Component Structure
+
+```typescript
+// components/PlayerControls.tsx
+import { usePlaybackStore } from '@/stores/playback';
+import { Play, Pause, SkipForward } from '@phosphor-icons/react';
+
+export function PlayerControls() {
+  const { isPlaying, play, pause, next } = usePlaybackStore();
+  
+  return (
+    <div className="flex gap-2">
+      <button onClick={isPlaying ? pause : play}>
+        {isPlaying ? <Pause /> : <Play />}
+      </button>
+      <button onClick={next}>
+        <SkipForward />
+      </button>
+    </div>
+  );
+}
+```
+
+### Rust Code
+
+<CardGroup cols={2}>
+  <Card title="Formatting" icon="align-left">
+    Use `rustfmt` for consistent formatting:
+    
+    ```bash
+    cd apps/desktop/src-tauri
+    cargo fmt
+    ```
+  </Card>
+  
+  <Card title="Linting" icon="check-circle">
+    Use `clippy` to catch common mistakes:
+    
+    ```bash
+    cargo clippy -- -D warnings
+    ```
+  </Card>
+</CardGroup>
+
+### Tauri Commands
+
+```rust
+// src-tauri/src/commands/spotify.rs
+use tauri::State;
+use crate::spotify::SpotifyClient;
+
+#[tauri::command]
+pub async fn get_playback(
+    client: State<'_, SpotifyClient>
+) -> Result<PlaybackState, String> {
+    client
+        .get_current_playback()
+        .await
+        .map_err(|e| e.to_string())
+}
+```
+
+## Pull Request Guidelines
+
+### What Makes a Good PR
+
+<Steps>
+  <Step title="Scope Small">
+    Focus on solving one problem. Avoid combining unrelated changes.
+    
+    <Check>**Good**: Fix Spotify token refresh logic</Check>
+    <X>**Avoid**: Fix token refresh + add new theme + update dependencies</X>
+  </Step>
+  
+  <Step title="Write Clear Descriptions">
+    Explain what the PR does and why:
+    
+    ```markdown
+    ## Problem
+    When the Spotify access token expires, the app doesn't automatically 
+    refresh it, causing playback controls to fail.
+    
+    ## Solution
+    Added automatic token refresh logic that checks expiration before 
+    each API call and requests a new token using the refresh token.
+    
+    ## Testing
+    1. Wait for token to expire (1 hour)
+    2. Try to play/pause
+    3. Verify playback controls still work
+    ```
+  </Step>
+  
+  <Step title="Link Related Issues">
+    Reference GitHub issues in your PR description:
+    
+    ```markdown
+    Fixes #123
+    Related to #456
+    ```
+  </Step>
+  
+  <Step title="Update Documentation">
+    If your change affects user-facing behavior or developer workflows, update relevant documentation.
+  </Step>
+</Steps>
+
+### PR Checklist
+
+<Accordion title="Before Submitting">
+  - [ ] Code follows project style guidelines
+  - [ ] Ran `pnpm lint` and fixed all issues
+  - [ ] Ran `pnpm format` to format code
+  - [ ] Tested in development mode (`pnpm desktop:dev`)
+  - [ ] Tested production build (`pnpm desktop:build`)
+  - [ ] Updated documentation if needed
+  - [ ] Linked related GitHub issues
+  - [ ] PR description explains the change clearly
+</Accordion>
+
+## Areas for Contribution
+
+### Good First Issues
+
+Look for issues labeled `good first issue` on the [issue tracker](https://github.com/ModioStudio/MiniFy/issues?q=label%3A%22good+first+issue%22).
+
+### High-Impact Areas
+
+<CardGroup cols={2}>
+  <Card title="UI/UX Improvements" icon="paintbrush">
+    - New player layouts
+    - Theme refinements
+    - Accessibility enhancements
+  </Card>
+  
+  <Card title="Feature Development" icon="plus">
+    - Keyboard shortcuts
+    - Queue management
+    - Playlist integration
+  </Card>
+  
+  <Card title="AI DJ Enhancements" icon="robot">
+    - New tool functions
+    - Better recommendations
+    - Additional AI providers
+  </Card>
+  
+  <Card title="Platform Support" icon="window">
+    - Linux-specific fixes
+    - System tray improvements
+    - Native integrations
+  </Card>
+</CardGroup>
+
+## Testing
+
+### Manual Testing
+
+<Steps>
+  <Step title="Development Testing">
+    Test your changes in development mode:
+    
+    ```bash
+    pnpm desktop:dev
+    ```
+    
+    Use DevTools to debug:
+    - **macOS**: `Cmd + Option + I`
+    - **Windows/Linux**: `Ctrl + Shift + I`
+  </Step>
+  
+  <Step title="Production Testing">
+    Always test production builds:
+    
+    ```bash
+    pnpm desktop:build
+    ```
+    
+    Install and run the built application from:
+    - **macOS**: `apps/desktop/src-tauri/target/release/bundle/macos/MiniFy.app`
+    - **Windows**: `apps/desktop/src-tauri/target/release/bundle/nsis/`
+    - **Linux**: `apps/desktop/src-tauri/target/release/bundle/appimage/`
+  </Step>
+  
+  <Step title="Cross-Platform Testing">
+    If possible, test on multiple platforms:
+    - macOS (Intel + Apple Silicon)
+    - Windows 10/11
+    - Linux (Ubuntu, Arch, Fedora)
+  </Step>
+</Steps>
+
+### Test Scenarios
+
+<AccordionGroup>
+  <Accordion title="OAuth Flow">
+    1. Clear credentials: `pnpm desktop:clear`
+    2. Launch app: `pnpm desktop:dev`
+    3. Enter Spotify Client ID
+    4. Complete OAuth flow
+    5. Verify playback controls work
+  </Accordion>
+  
+  <Accordion title="Playback Controls">
+    - Play/pause current track
+    - Skip forward/backward
+    - Seek to position
+    - Adjust volume
+    - Save/unsave track
+  </Accordion>
+  
+  <Accordion title="Theme Switching">
+    - Switch between built-in themes
+    - Create custom theme in Theme Studio
+    - Apply custom theme
+    - Verify all UI elements update correctly
+  </Accordion>
+  
+  <Accordion title="AI DJ">
+    - Add AI provider API key
+    - Send messages to AI DJ
+    - Test playback control via AI
+    - Test music recommendations
+  </Accordion>
+</AccordionGroup>
+
+## Communication
+
+### Asking for Help
+
+<CardGroup cols={2}>
+  <Card title="GitHub Discussions" icon="comments" href="https://github.com/ModioStudio/MiniFy/discussions">
+    Ask questions and share ideas
+  </Card>
+  
+  <Card title="Discord" icon="discord" href="https://discord.gg/haNyuz2zQ5">
+    Chat with the community
+  </Card>
+</CardGroup>
+
+### Reporting Issues
+
+When reporting bugs, include:
+
+<Steps>
+  <Step title="Environment">
+    - OS and version (e.g., macOS 14.2, Windows 11, Ubuntu 22.04)
+    - MiniFy version
+    - Node.js and Rust versions
+  </Step>
+  
+  <Step title="Steps to Reproduce">
+    Clear, numbered steps to reproduce the issue:
+    
+    1. Launch MiniFy
+    2. Click play button
+    3. Observe error in console
+  </Step>
+  
+  <Step title="Expected vs Actual">
+    - **Expected**: Playback should start
+    - **Actual**: Error: "Token expired"
+  </Step>
+  
+  <Step title="Logs/Screenshots">
+    Include relevant logs, error messages, or screenshots.
+    
+    <Note>
+      Open DevTools to view console logs in development mode.
+    </Note>
+  </Step>
+</Steps>
+
+## Code of Conduct
+
+### Be Respectful
+
+- Be concise and respectful in all communications
+- Focus on technical merit, not personal preferences
+- Accept constructive feedback gracefully
+- Help others learn and grow
+
+### Stay On Topic
+
+- Keep discussions focused on the issue at hand
+- If stuck, describe what you tried and where you're blocked
+- Link to relevant code, docs, or issues when helpful
+
+## License
+
+By contributing to MiniFy, you agree that your contributions will be licensed under the [MIT License](https://github.com/ModioStudio/MiniFy/blob/main/LICENSE).
+
+## Recognition
+
+All contributors are recognized in:
+- GitHub's contributor graph
+- Release notes (for significant contributions)
+- The MiniFy community
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Architecture" icon="sitemap" href="/developer/architecture">
+    Learn the technical architecture
+  </Card>
+  
+  <Card title="Building" icon="hammer" href="/developer/building">
+    Build MiniFy from source
+  </Card>
+  
+  <Card title="Project Board" icon="list-check" href="https://github.com/orgs/ModioStudio/projects/2">
+    View the roadmap
+  </Card>
+</CardGroup>

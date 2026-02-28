@@ -1,0 +1,343 @@
+---
+title: Keyboard Shortcuts
+description: Navigate MiniFy efficiently with configurable keyboard shortcuts
+icon: keyboard
+---
+
+MiniFy provides global keyboard shortcuts to quickly access features without touching your mouse. All shortcuts are configurable and respect input field focus.
+
+## Default Shortcuts
+
+### Navigation Shortcuts
+
+<AccordionGroup>
+  <Accordion title="Ctrl+S - Search" icon="magnifying-glass">
+    Open the search bar to find and play tracks.
+    
+    **Usage:**
+    - Press `Ctrl+S` from any view
+    - Type your search query
+    - Press `Enter` or click a result to play
+    - Press `Escape` to close search
+    
+    **Implementation:**
+    ```typescript
+    if (e.ctrlKey && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      setView('search');
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Ctrl+P - Playlists" icon="list">
+    Open your playlists view.
+    
+    **Usage:**
+    - Press `Ctrl+P` to view all playlists
+    - Browse and select tracks
+    - Press `Escape` to return to player
+    
+    **Implementation:**
+    ```typescript
+    if (e.ctrlKey && e.key.toLowerCase() === 'p') {
+      e.preventDefault();
+      setView('playlist');
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Ctrl+E - Settings" icon="gear">
+    Open the settings panel.
+    
+    **Usage:**
+    - Configure layouts, themes, providers
+    - Manage AI DJ settings
+    - Toggle Discord integration
+    - Press `Escape` to close
+    
+    **Implementation:**
+    ```typescript
+    if (e.ctrlKey && e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      setView('settings');
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Ctrl+M - Volume" icon="volume">
+    Open the volume control view.
+    
+    **Usage:**
+    - Adjust playback volume
+    - Fine-tune audio levels
+    - Press `Escape` to close
+    
+    **Implementation:**
+    ```typescript
+    if (e.ctrlKey && e.key.toLowerCase() === 'm') {
+      e.preventDefault();
+      setView('volume');
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Ctrl+D - AI DJ" icon="robot">
+    Open the AI DJ chat interface (if configured).
+    
+    **Requirements:**
+    - AI provider must be configured
+    - Valid API key must be set
+    
+    **Usage:**
+    - Press `Ctrl+D` to open AI DJ
+    - Chat with the AI to control music
+    - Press `Escape` to close
+    
+    **Implementation:**
+    ```typescript
+    if (e.ctrlKey && e.key.toLowerCase() === 'd') {
+      e.preventDefault();
+      const settings = await readSettings();
+      const hasAI = getActiveAIProvider(
+        settings.ai_providers,
+        settings.active_ai_provider
+      ) !== null;
+      if (hasAI) {
+        setView('aidj');
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### System Shortcuts
+
+<Accordion title="Escape - Return to Player" icon="arrow-left">
+  Return to the main player view from any screen.
+  
+  **Usage:**
+  - Press `Escape` from Settings, Search, AI DJ, etc.
+  - Returns to the active player layout
+  - Does not work from the main player view (already there)
+  
+  **Implementation:**
+  ```typescript
+  if (e.key === 'Escape' && view !== 'app') {
+    e.preventDefault();
+    setView('app');
+    return;
+  }
+  ```
+</Accordion>
+
+## Context Menu Shortcuts
+
+Right-click anywhere to access the context menu with shortcuts:
+
+```typescript
+const menu = await Menu.new({
+  items: [
+    { text: "Settings\t\t\t\tCtrl+E" },
+    { text: "Search\t\t\t\tCtrl+S" },
+    { text: "Playlists\t\t\t\tCtrl+P" },
+    { text: "Volume\t\t\t\tCtrl+M" },
+    { text: "AI DJ\t\t\t\tCtrl+D" }, // if AI configured
+    { type: "Separator" },
+    { text: "Minimize" },
+    { text: "Close Window" },
+  ],
+});
+```
+
+## Input Field Handling
+
+Shortcuts are **disabled** when typing in input fields:
+
+```typescript
+const onKeyDown = async (e: KeyboardEvent) => {
+  // Ignore if typing in an input field
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+    return;
+  }
+
+  // Process shortcuts
+  if (e.ctrlKey && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    setView('search');
+  }
+};
+```
+
+<Tip>
+  This prevents shortcuts from interfering when you're typing search queries or AI DJ messages.
+</Tip>
+
+## Implementation Details
+
+### Event Listener Setup
+
+```typescript
+useEffect(() => {
+  if (!firstBootDone) return;
+
+  const onKeyDown = async (e: KeyboardEvent) => {
+    // Ignore if typing in an input field
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+
+    // Escape: Back to app
+    if (e.key === "Escape" && view !== "app") {
+      e.preventDefault();
+      setView("app");
+      return;
+    }
+
+    // Ctrl shortcuts
+    if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+      switch (e.key.toLowerCase()) {
+        case "s": // Ctrl+S: Search
+          e.preventDefault();
+          setView("search");
+          break;
+        case "p": // Ctrl+P: Playlists
+          e.preventDefault();
+          setView("playlist");
+          break;
+        case "e": // Ctrl+E: Settings
+          e.preventDefault();
+          setView("settings");
+          break;
+        case "m": // Ctrl+M: Volume
+          e.preventDefault();
+          setView("volume");
+          break;
+        case "d": {
+          // Ctrl+D: AI DJ (if available)
+          e.preventDefault();
+          const settings = await readSettings();
+          const hasAI =
+            getActiveAIProvider(settings.ai_providers, settings.active_ai_provider) !== null;
+          if (hasAI) {
+            setView("aidj");
+          }
+          break;
+        }
+      }
+    }
+  };
+
+  document.addEventListener("keydown", onKeyDown);
+  return () => document.removeEventListener("keydown", onKeyDown);
+}, [firstBootDone, view]);
+```
+
+### Conditional AI DJ Shortcut
+
+The AI DJ shortcut only works when a provider is configured:
+
+```typescript
+case "d": {
+  e.preventDefault();
+  const settings = await readSettings();
+  const hasAI = getActiveAIProvider(
+    settings.ai_providers,
+    settings.active_ai_provider
+  ) !== null;
+  if (hasAI) {
+    setView("aidj");
+  }
+  break;
+}
+```
+
+## Shortcuts Configuration File
+
+MiniFy uses a `shortcuts.json` file for configuration:
+
+```bash
+~/workspace/source/apps/desktop/src/config/shortcuts.json
+```
+
+<Note>
+  The shortcuts configuration file is currently empty (`{}`), indicating that shortcuts are hardcoded in the UI layer. Future versions may support custom shortcut mapping via this file.
+</Note>
+
+## Quick Reference
+
+<CardGroup cols={2}>
+  <Card title="Ctrl+S" icon="magnifying-glass">
+    Open Search
+  </Card>
+  <Card title="Ctrl+P" icon="list">
+    Open Playlists
+  </Card>
+  <Card title="Ctrl+E" icon="gear">
+    Open Settings
+  </Card>
+  <Card title="Ctrl+M" icon="volume">
+    Open Volume
+  </Card>
+  <Card title="Ctrl+D" icon="robot">
+    Open AI DJ
+  </Card>
+  <Card title="Escape" icon="arrow-left">
+    Return to Player
+  </Card>
+  <Card title="Right-click" icon="mouse-pointer">
+    Context Menu
+  </Card>
+</CardGroup>
+
+## Customizing Shortcuts
+
+To customize shortcuts, modify the keyboard event handler in `src/ui/index.tsx`:
+
+```typescript
+// Example: Change search to Ctrl+F instead of Ctrl+S
+case "f": // Changed from "s"
+  e.preventDefault();
+  setView("search");
+  break;
+```
+
+<Warning>
+  Modifying keyboard shortcuts requires rebuilding the application.
+</Warning>
+
+## Platform Considerations
+
+<Tabs>
+  <Tab title="Windows/Linux">
+    All shortcuts use the `Ctrl` key as the modifier.
+    
+    - `Ctrl+S` - Search
+    - `Ctrl+P` - Playlists
+    - `Ctrl+E` - Settings
+  </Tab>
+  
+  <Tab title="macOS">
+    Future versions may support `Cmd` key mapping for macOS:
+    
+    - `Cmd+S` - Search
+    - `Cmd+P` - Playlists
+    - `Cmd+E` - Settings
+    
+    <Note>
+      Currently, macOS users should use `Ctrl` instead of `Cmd`.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Accessibility
+
+Keyboard shortcuts improve accessibility by:
+
+- Enabling mouse-free navigation
+- Providing consistent, predictable patterns
+- Respecting input field focus
+- Displaying shortcuts in context menus
+
+<Tip>
+  All shortcuts follow standard conventions (e.g., `Ctrl+S` for search, `Escape` to close) to match user expectations.
+</Tip>

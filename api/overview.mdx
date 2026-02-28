@@ -1,0 +1,174 @@
+---
+title: API Reference Overview
+description: Complete reference for MiniFy's Tauri command API
+---
+
+MiniFy exposes a comprehensive set of Tauri commands that allow the frontend to communicate with the Rust backend for secure credential storage, settings management, and native functionality.
+
+## Architecture
+
+MiniFy uses [Tauri's IPC (Inter-Process Communication)](https://tauri.app/v1/guides/features/command/) to expose Rust functions as commands that can be invoked from the TypeScript frontend.
+
+### Command Invocation Pattern
+
+All commands are invoked using Tauri's `invoke` function:
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+// Simple command with no parameters
+const hasProvider = await invoke<boolean>("has_music_provider");
+
+// Command with parameters
+await invoke("save_ai_api_key", { 
+  provider: "openai", 
+  apiKey: "sk-..." 
+});
+
+// Command with return value
+const settings = await invoke<Settings>("read_settings");
+```
+
+## Command Categories
+
+MiniFy's API is organized into five main categories:
+
+<CardGroup cols={2}>
+  <Card title="Spotify Commands" icon="spotify" href="/api/spotify-commands">
+    OAuth flow, token management, and music provider configuration
+  </Card>
+  
+  <Card title="AI Commands" icon="robot" href="/api/ai-commands">
+    Secure API key storage for OpenAI, Anthropic, Google, and Groq
+  </Card>
+  
+  <Card title="Settings Commands" icon="gear" href="/api/settings-commands">
+    Read and write application settings to persistent storage
+  </Card>
+  
+  <Card title="Theme Commands" icon="palette" href="/api/theme-commands">
+    Create, load, and manage custom visual themes
+  </Card>
+</CardGroup>
+
+## Security Features
+
+### Keyring Integration
+
+Sensitive credentials (Spotify tokens, AI API keys) are stored using the system keyring:
+
+- **macOS**: Keychain
+- **Windows**: Credential Manager
+- **Linux**: Secret Service API (libsecret)
+
+This ensures credentials are encrypted at rest and isolated from the application data directory.
+
+### Caching Strategy
+
+The backend implements intelligent caching to minimize keyring access:
+
+```rust
+// In-memory cache for frequently accessed credentials
+lazy_static! {
+    static ref TOKENS_CACHE: Arc<Mutex<Option<SpotifyTokens>>> = 
+        Arc::new(Mutex::new(None));
+}
+```
+
+Cached values are invalidated when:
+- Credentials are updated or deleted
+- Tokens expire
+- The application restarts
+
+## Error Handling
+
+All commands return `Result<T, String>` types in Rust, which translate to Promise rejections in TypeScript:
+
+```typescript
+try {
+  const tokens = await invoke<SpotifyTokens>("get_tokens");
+  // Use tokens...
+} catch (error) {
+  // error is a string describing what went wrong
+  console.error("Failed to get tokens:", error);
+}
+```
+
+### Common Error Patterns
+
+<AccordionGroup>
+  <Accordion title="Keyring Errors">
+    ```
+    "Keyring error: No password found"
+    "Failed to save access token: Access denied"
+    ```
+    These occur when the system keyring is unavailable or denies access.
+  </Accordion>
+  
+  <Accordion title="Validation Errors">
+    ```
+    "Client ID is empty"
+    "API key is empty"
+    "Invalid JSON: expected value at line 1 column 1"
+    ```
+    These occur when input validation fails before storage.
+  </Accordion>
+  
+  <Accordion title="Task Errors">
+    ```
+    "Task failed: task was cancelled"
+    ```
+    These occur when async operations are interrupted.
+  </Accordion>
+</AccordionGroup>
+
+## Type Definitions
+
+### Common Types
+
+These TypeScript types correspond to Rust structs used across commands:
+
+```typescript
+type AIProviderType = "openai" | "anthropic" | "google" | "groq";
+type MusicProviderType = "spotify" | "youtube";
+
+interface SpotifyTokens {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number; // Unix timestamp
+}
+
+interface Settings {
+  first_boot_done: boolean;
+  layout: string;
+  theme: string;
+  ai_providers: AIProviderConfig[];
+  active_ai_provider: AIProviderType | null;
+  active_music_provider: MusicProviderType | null;
+  show_ai_queue_border: boolean;
+  discord_rpc_enabled: boolean;
+  last_played_track: LastPlayedTrack | null;
+}
+```
+
+## Source Code Reference
+
+All Tauri commands are defined in the following source files:
+
+- **Main handler**: `apps/desktop/src-tauri/src/lib.rs:49-93`
+- **Spotify auth**: `apps/desktop/src-tauri/src/spotify_auth.rs`
+- **AI keyring**: `apps/desktop/src-tauri/src/ai_keyring.rs`
+- **Settings**: `apps/desktop/src-tauri/src/settings.rs`
+- **Custom themes**: `apps/desktop/src-tauri/src/custom_themes.rs`
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Spotify Commands" icon="spotify" href="/api/spotify-commands">
+    Start with OAuth and music provider setup
+  </Card>
+  
+  <Card title="AI Commands" icon="robot" href="/api/ai-commands">
+    Learn how to manage AI provider keys
+  </Card>
+</CardGroup>

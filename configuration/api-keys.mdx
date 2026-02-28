@@ -1,0 +1,327 @@
+---
+title: AI Provider API Keys
+description: Configure API keys for AI-powered playlist generation
+---
+
+## Overview
+
+MiniFy uses AI to generate intelligent playlists based on your prompts. To use this feature, you need to configure an API key for at least one supported AI provider.
+
+<Note>
+  API keys are stored securely in your system's credential manager (Keychain on macOS, Credential Manager on Windows, Secret Service on Linux), not in plain text.
+  
+  See: `ai_keyring.rs:6`
+</Note>
+
+## Supported Providers
+
+MiniFy supports four AI providers:
+
+<Accordion title="OpenAI">
+  **Provider ID**: `openai`
+  
+  OpenAI's GPT models for natural language understanding.
+  
+  - Sign up: https://platform.openai.com/signup
+  - Get API key: https://platform.openai.com/api-keys
+  - Models: GPT-4, GPT-3.5-turbo
+  
+  See: `ai_keyring.rs:133`
+</Accordion>
+
+<Accordion title="Anthropic">
+  **Provider ID**: `anthropic`
+  
+  Anthropic's Claude models for advanced reasoning.
+  
+  - Sign up: https://console.anthropic.com/
+  - Get API key: https://console.anthropic.com/settings/keys
+  - Models: Claude 3 Opus, Sonnet, Haiku
+  
+  See: `ai_keyring.rs:133`
+</Accordion>
+
+<Accordion title="Google AI">
+  **Provider ID**: `google`
+  
+  Google's Gemini models.
+  
+  - Sign up: https://makersuite.google.com/
+  - Get API key: https://makersuite.google.com/app/apikey
+  - Models: Gemini Pro, Gemini Ultra
+  
+  See: `ai_keyring.rs:133`
+</Accordion>
+
+<Accordion title="Groq">
+  **Provider ID**: `groq`
+  
+  Fast inference with open-source models.
+  
+  - Sign up: https://console.groq.com/
+  - Get API key: https://console.groq.com/keys
+  - Models: Llama 2, Mixtral
+  
+  See: `ai_keyring.rs:133`
+</Accordion>
+
+## Adding API Keys
+
+<Steps>
+  <Step title="Open Settings">
+    Navigate to Settings > AI Providers in MiniFy
+  </Step>
+  
+  <Step title="Select Provider">
+    Click on the provider you want to configure (OpenAI, Anthropic, Google AI, or Groq)
+  </Step>
+  
+  <Step title="Enter API Key">
+    Paste your API key from the provider's dashboard
+    
+    <Warning>
+      API keys are sensitive credentials. Never share them publicly or commit them to version control.
+    </Warning>
+  </Step>
+  
+  <Step title="Save">
+    Click Save to securely store the API key in your system keyring
+    
+    See: `ai_keyring.rs:50`
+  </Step>
+  
+  <Step title="Enable Provider">
+    Toggle the provider to enabled state
+  </Step>
+  
+  <Step title="Set as Active">
+    Select this provider as your active AI provider for playlist generation
+  </Step>
+</Steps>
+
+## Managing API Keys
+
+### Viewing Configured Providers
+
+You can see which providers have API keys configured without revealing the actual keys:
+
+```rust
+get_all_ai_providers() -> Vec<AIProviderKeyring>
+```
+
+This returns:
+```json
+[
+  {"provider": "openai", "has_key": true},
+  {"provider": "anthropic", "has_key": false},
+  {"provider": "google", "has_key": false},
+  {"provider": "groq", "has_key": true}
+]
+```
+
+See: `ai_keyring.rs:132`
+
+### Updating API Keys
+
+To update an existing API key:
+
+1. Open Settings > AI Providers
+2. Select the provider
+3. Enter the new API key
+4. Click Save
+
+The old key is automatically replaced. See: `ai_keyring.rs:50`
+
+### Removing API Keys
+
+To remove an API key:
+
+1. Open Settings > AI Providers
+2. Select the provider
+3. Click "Remove Key"
+4. Confirm deletion
+
+See: `ai_keyring.rs:117`
+
+### Clearing All Keys
+
+To remove all AI provider keys at once:
+
+1. Open Settings > AI Providers
+2. Click "Clear All AI Keys"
+3. Confirm the action
+
+<Warning>
+  This will permanently delete all stored AI API keys. You'll need to re-enter them to use AI features.
+</Warning>
+
+See: `ai_keyring.rs:147`
+
+## Security
+
+### Keyring Storage
+
+API keys are stored using your operating system's secure credential storage:
+
+<CodeGroup>
+```text macOS
+Keychain Access
+Service: minify
+Account: ai_key_{provider}
+```
+
+```text Windows
+Credential Manager
+Target: minify\ai_key_{provider}
+```
+
+```text Linux
+Secret Service API (GNOME Keyring/KWallet)
+Service: minify
+User: ai_key_{provider}
+```
+</CodeGroup>
+
+See: `ai_keyring.rs:6-7`
+
+### Key Caching
+
+For performance, API keys are cached in memory after first retrieval. The cache is cleared when:
+
+- MiniFy is closed
+- An API key is updated or deleted
+- All keys are cleared
+
+See: `ai_keyring.rs:9-47`
+
+### Key Format
+
+Keys are stored with the prefix `ai_key_` followed by the provider name:
+
+```rust
+fn get_ai_key_name(provider: &str) -> String {
+    format!("{}{}" , AI_KEY_PREFIX, provider)
+}
+```
+
+See: `ai_keyring.rs:19`
+
+## Provider Configuration
+
+In addition to API keys, providers must be enabled in settings:
+
+```json settings.json
+{
+  "ai_providers": [
+    {
+      "provider": "openai",
+      "enabled": true
+    },
+    {
+      "provider": "anthropic",
+      "enabled": true
+    }
+  ],
+  "active_ai_provider": "openai"
+}
+```
+
+<Note>
+  API keys are NOT stored in `settings.json`. Only the provider list and enabled status are stored there. The actual API keys are in the system keyring.
+  
+  See: `settings.rs:78-84`
+</Note>
+
+## Troubleshooting
+
+### Invalid API Key
+
+**Symptoms**: Error message when trying to generate playlists
+
+**Solutions**:
+1. Verify the API key is correct in your provider's dashboard
+2. Ensure you copied the entire key without extra spaces
+3. Check that the key hasn't expired or been revoked
+4. Re-enter the key in MiniFy settings
+
+### Keyring Access Denied
+
+**Symptoms**: Unable to save or retrieve API keys
+
+**Solutions**:
+
+<CodeGroup>
+```bash macOS
+1. Open Keychain Access
+2. Search for "minify"
+3. Right-click > Get Info
+4. Access Control > Allow all applications
+```
+
+```bash Windows
+1. Run as administrator if needed
+2. Check Credential Manager permissions
+3. Ensure Windows Credential Manager service is running
+```
+
+```bash Linux
+1. Ensure gnome-keyring or kwallet is installed
+2. Check that secret service is running
+3. Install libsecret if missing
+```
+</CodeGroup>
+
+### API Key Not Found
+
+**Symptoms**: Provider shows as not configured despite adding a key
+
+**Solutions**:
+1. Restart MiniFy to clear the cache
+2. Re-enter the API key
+3. Check system keyring permissions
+4. Verify the keyring service is running
+
+See: `ai_keyring.rs:94`
+
+### Multiple Providers Needed
+
+You can configure multiple providers simultaneously:
+
+1. Add API keys for each provider you want to use
+2. Enable all providers in settings
+3. Switch between them using the active provider selector
+
+This allows you to:
+- Compare results from different AI models
+- Use different providers for different tasks
+- Have a fallback if one provider is unavailable
+
+## Best Practices
+
+### API Key Security
+
+- Never share your API keys
+- Don't commit keys to version control
+- Rotate keys periodically
+- Use separate keys for different applications
+- Monitor your API usage in provider dashboards
+
+### Provider Selection
+
+- **OpenAI**: Best for general-purpose playlist generation
+- **Anthropic**: Excellent for complex reasoning and context
+- **Google AI**: Good balance of speed and quality
+- **Groq**: Fastest inference, open-source models
+
+### Cost Management
+
+All providers charge per API request:
+
+1. Monitor your usage in provider dashboards
+2. Set spending limits if available
+3. Start with a single provider to test
+4. Consider rate limits and quotas
+
+<Note>
+  MiniFy does not track or bill for API usage. You pay providers directly based on your usage.
+</Note>

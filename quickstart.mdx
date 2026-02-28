@@ -1,80 +1,466 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get up and running with MiniFy in under 5 minutes. Connect Spotify, choose your layout, and start playing music.
 ---
 
-## Get started in three steps
+# Quick start
 
-Get your documentation site running locally and make your first customization.
+This guide will take you from installation to playing your first track in under 5 minutes.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+Before you begin, make sure you have:
+
+- MiniFy installed on your system ([installation guide](/installation))
+- A Spotify account (Free or Premium)
+- A Spotify Developer Client ID ([setup instructions](/installation#spotify-developer-setup))
+
+## First launch
+
+When you launch MiniFy for the first time, you'll go through a guided setup process.
+
+<Steps>
+  <Step title="Choose your music provider">
+    MiniFy supports multiple music providers. For this guide, select **Spotify**.
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    <Note>
+      YouTube Music and Apple Music support are in development. Currently, Spotify is the primary supported provider.
+    </Note>
+  </Step>
+  
+  <Step title="Enter your Spotify Client ID">
+    Paste the Client ID you created in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    ```typescript
+    // MiniFy stores this securely in your OS keyring
+    await invoke("save_spotify_client_id", { clientId: "your-client-id" });
+    ```
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    Click **Continue** to proceed to authentication.
+  </Step>
+  
+  <Step title="Authorize with Spotify">
+    MiniFy will open your browser to complete OAuth authentication. You'll be asked to:
+    
+    1. Log in to your Spotify account (if not already logged in)
+    2. Review the permissions MiniFy requests:
+       - Read your currently playing track
+       - Control playback (play, pause, skip, volume)
+       - Access your playlists and saved tracks
+       - Read your top artists and recent listening history
+    3. Click **Agree** to authorize
+    
+    Your browser will show a success message and automatically redirect back to MiniFy.
+  </Step>
+  
+  <Step title="Success">
+    Once authorized, MiniFy will display your currently playing track (if any) or show "No track playing" if Spotify is idle.
+  </Step>
+</Steps>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Playing your first track
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+Now that you're connected, let's play some music.
 
-### Step 3: Go live
+### Start playback from Spotify
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+The easiest way to get started:
 
-## Next steps
+1. Open the Spotify desktop app or web player
+2. Start playing any track
+3. MiniFy will automatically detect and display it within 2 seconds
 
-Now that you have your docs running, explore these key features:
+### Control playback from MiniFy
+
+Once a track is playing, you can control it directly from MiniFy:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Play/Pause" icon="play">
+    Click the play/pause button in the center of the player
+  </Card>
+  <Card title="Skip tracks" icon="forward">
+    Use the next/previous buttons to navigate your queue
+  </Card>
+  <Card title="Scrub timeline" icon="sliders">
+    Click or drag the playback bar to jump to any position
+  </Card>
+  <Card title="Save to library" icon="heart">
+    Click the heart icon to add the current track to your Liked Songs
+  </Card>
 </CardGroup>
 
+### Playback controls reference
+
+```typescript
+// MiniFy's playback controls are implemented via Spotify Web API
+
+// Play/Pause
+await spotify.play();  // or spotify.pause()
+
+// Skip tracks
+await spotify.skipToNext();
+await spotify.skipToPrevious();
+
+// Seek to position (in milliseconds)
+await spotify.seek(120000);  // Jump to 2:00
+
+// Save to library
+await spotify.addToMySavedTracks([trackId]);
+```
+
+## Customizing your player
+
+MiniFy is highly customizable. Let's explore the key settings.
+
+### Access settings
+
+Right-click anywhere on the MiniFy window and select **Settings** from the context menu.
+
+Alternatively, you can use the keyboard shortcut (if configured).
+
+### Choose a layout
+
+MiniFy offers three distinct layouts:
+
+<Tabs>
+  <Tab title="Layout A">
+    **Horizontal compact view**
+    
+    Perfect for placing at the top or bottom of your screen. Shows album art, track info, and controls in a single row.
+    
+    - Best for: Ultrawide monitors, top/bottom screen placement
+    - Dimensions: ~600px wide × 100px tall
+    - Elements: Album art (left), track info (center), controls (right)
+  </Tab>
+  
+  <Tab title="Layout B">
+    **Vertical card view**
+    
+    Larger album art with stacked controls below. Ideal for corner placement.
+    
+    - Best for: Corner placement, larger album art display
+    - Dimensions: ~300px wide × 400px tall
+    - Elements: Large album art (top), track info and controls (stacked below)
+  </Tab>
+  
+  <Tab title="Layout C">
+    **Minimal view**
+    
+    Just the essentials—smallest footprint possible.
+    
+    - Best for: Maximum screen real estate, minimalists
+    - Dimensions: ~200px wide × 80px tall
+    - Elements: Tiny album art, compact controls
+  </Tab>
+</Tabs>
+
+**To change layout:**
+
+<Steps>
+  <Step title="Open settings">
+    Right-click on MiniFy → Settings
+  </Step>
+  <Step title="Navigate to Layout tab">
+    Click "Layout" in the left sidebar
+  </Step>
+  <Step title="Select your preferred layout">
+    Click Layout A, B, or C. The change applies immediately.
+  </Step>
+</Steps>
+
+### Apply a theme
+
+MiniFy ships with 8 built-in themes:
+
+<CardGroup cols={2}>
+  <Card title="Dark" icon="moon">
+    Default dark theme with subtle gradients
+  </Card>
+  <Card title="Light" icon="sun">
+    Clean light theme for bright environments
+  </Card>
+  <Card title="Catppuccin" icon="palette">
+    Popular pastel theme inspired by Catppuccin Mocha
+  </Card>
+  <Card title="Dracula" icon="palette">
+    Dark theme with purple accents
+  </Card>
+</CardGroup>
+
+**To change theme:**
+
+<Steps>
+  <Step title="Open settings">
+    Right-click on MiniFy → Settings
+  </Step>
+  <Step title="Navigate to Appearance tab">
+    Click "Appearance" in the left sidebar
+  </Step>
+  <Step title="Select a theme">
+    Click any theme to apply it instantly. No restart required.
+  </Step>
+</Steps>
+
+## Using the AI DJ
+
+MiniFy's AI DJ feature provides intelligent music recommendations based on your listening history.
+
+### Connect an AI provider
+
+<Steps>
+  <Step title="Get an API key">
+    Choose your preferred AI provider and obtain an API key:
+    
+    - **OpenAI**: [platform.openai.com/api-keys](https://platform.openai.com/api-keys) (uses GPT-4o Mini)
+    - **Anthropic**: [console.anthropic.com](https://console.anthropic.com) (uses Claude 3 Haiku)
+    - **Google AI**: [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (uses Gemini 1.5 Flash)
+    - **Groq**: [console.groq.com/keys](https://console.groq.com/keys) (uses Llama 3.1 8B)
+  </Step>
+  
+  <Step title="Add your API key to MiniFy">
+    1. Open Settings → Connections
+    2. Scroll to "AI Provider" section
+    3. Find your chosen provider and click the input field
+    4. Paste your API key and click **Connect**
+    
+    MiniFy will validate the key and store it securely in your OS keyring.
+  </Step>
+  
+  <Step title="Set as active provider">
+    If you have multiple AI providers configured, click **Set Active** on your preferred one.
+  </Step>
+</Steps>
+
+### Ask the AI DJ for recommendations
+
+Once connected, open the AI DJ chat from the context menu:
+
+<Steps>
+  <Step title="Open AI DJ">
+    Right-click on MiniFy → AI DJ
+  </Step>
+  
+  <Step title="Start a conversation">
+    Try these example prompts:
+    
+    - "Play something energetic and upbeat"
+    - "Find songs similar to my recent listens"
+    - "I'm in the mood for chill electronic music"
+    - "Recommend tracks based on my top artists"
+  </Step>
+  
+  <Step title="Get recommendations">
+    The AI analyzes:
+    - Your last 30 played tracks
+    - Your top artists and genres
+    - Spotify's audio features (energy, mood, tempo, danceability, acousticness)
+    
+    And returns 5 personalized recommendations with explanations.
+  </Step>
+  
+  <Step title="Play recommendations">
+    Click any recommended track to start playing immediately.
+  </Step>
+</Steps>
+
+### Enable AI auto-queue
+
+For endless AI-generated playlists:
+
+<Steps>
+  <Step title="Open AI DJ chat">
+    Right-click on MiniFy → AI DJ
+  </Step>
+  
+  <Step title="Enable auto-queue">
+    Toggle the "AI Queue" switch in the chat interface.
+  </Step>
+  
+  <Step title="Let it play">
+    The AI will:
+    1. Generate 5 tracks based on your listening history
+    2. Queue and play them automatically
+    3. When 2 tracks remain, fetch the next batch
+    4. Cache your preferences for 10 minutes to minimize API calls
+  </Step>
+</Steps>
+
+<Warning>
+  AI Queue consumes API tokens. A red border appears around MiniFy when active as a reminder. Disable it when not needed to conserve tokens.
+  
+  You can hide the red border in Settings → AI DJ → "Show Token Warning Border" (though we recommend keeping it visible).
+</Warning>
+
+### AI DJ technical details
+
+MiniFy uses the Vercel AI SDK with tool-calling to integrate with Spotify:
+
+```typescript
+// AI DJ tools available to the LLM
+const tools = {
+  get_current_track: async () => {
+    return await spotify.getMyCurrentPlayingTrack();
+  },
+  
+  get_recently_played: async ({ limit }) => {
+    return await spotify.getMyRecentlyPlayedTracks({ limit });
+  },
+  
+  get_top_artists: async ({ time_range, limit }) => {
+    return await spotify.getMyTopArtists({ time_range, limit });
+  },
+  
+  search_tracks: async ({ query, limit }) => {
+    return await spotify.searchTracks(query, { limit });
+  },
+  
+  get_audio_features: async ({ track_ids }) => {
+    return await spotify.getAudioFeaturesForTracks(track_ids);
+  },
+  
+  play_track: async ({ track_uri }) => {
+    return await spotify.play({ uris: [track_uri] });
+  }
+};
+```
+
+The AI has access to these tools and can call them to understand your taste and control playback.
+
+## Advanced features
+
+### Create custom themes
+
+Go beyond the built-in themes with the Theme Studio:
+
+<Steps>
+  <Step title="Open Theme Studio">
+    Settings → Theme Studio
+  </Step>
+  
+  <Step title="Edit the JSON">
+    Modify the theme JSON in the editor. Example:
+    
+    ```json
+    {
+      "name": "my-neon-theme",
+      "panel": {
+        "background": "rgba(10, 10, 30, 0.9)",
+        "borderRadius": 20,
+        "shadow": "0 0 40px rgba(0, 255, 255, 0.5)"
+      },
+      "controls": {
+        "iconColor": "#00FFFF",
+        "iconColorActive": "#FF00FF"
+      },
+      "playbar": {
+        "trackBg": "rgba(255, 255, 255, 0.1)",
+        "trackFill": "linear-gradient(90deg, #00FFFF 0%, #FF00FF 100%)",
+        "thumbColor": "#00FFFF"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Preview and save">
+    - Click **Validate** to check for errors
+    - Click **Preview** to see it live
+    - Click **Save** to add it to your custom themes
+  </Step>
+  
+  <Step title="Apply your theme">
+    Go to Settings → Appearance and select your custom theme from the "Custom Themes" section.
+  </Step>
+</Steps>
+
+Export your themes as JSON files to share with others or back up your designs.
+
+### Enable Discord Rich Presence
+
+Show what you're listening to on your Discord profile:
+
+<Steps>
+  <Step title="Open settings">
+    Settings → Connections
+  </Step>
+  
+  <Step title="Scroll to Discord Rich Presence">
+    Find the "Discord Rich Presence" section
+  </Step>
+  
+  <Step title="Toggle on">
+    Enable the switch. Your Discord status will update automatically with your current track.
+  </Step>
+</Steps>
+
+### Context menu shortcuts
+
+Right-click on MiniFy to access:
+
+- **Settings** — Open the settings panel
+- **AI DJ** — Launch the AI chat interface
+- **Always on Top** — Toggle window pinning
+- **Quit** — Close MiniFy
+
+## Keyboard shortcuts
+
+While MiniFy doesn't currently have configurable keyboard shortcuts, you can control playback using Spotify's global media keys:
+
+- **Play/Pause** — Media Play/Pause key
+- **Next Track** — Media Next key
+- **Previous Track** — Media Previous key
+
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Custom keyboard shortcut configuration is planned for a future release. Follow the [roadmap](https://github.com/orgs/ModioStudio/projects/2) for updates.
 </Note>
+
+## Troubleshooting
+
+### Track not displaying
+
+1. Verify you have an active Spotify session (open the Spotify app and play something)
+2. Check that MiniFy is authorized (Settings → Connections → Spotify should show "Connected")
+3. Ensure your Spotify Client ID redirect URI is set to `http://127.0.0.1:3000/callback`
+
+### OAuth keeps failing
+
+1. Double-check your Spotify Client ID in Settings → Connections
+2. Verify port 3000 is not blocked by your firewall
+3. Clear credentials and re-authenticate:
+   ```typescript
+   // MiniFy includes a clear credentials command
+   await invoke("clear_credentials");
+   ```
+
+### AI DJ not responding
+
+1. Verify your API key is valid (Settings → Connections → AI Provider)
+2. Check your internet connection
+3. Ensure you have an active AI provider set (look for "Active" status)
+4. Check the browser console (F12) for error messages
+
+### MiniFy window disappeared
+
+MiniFy stays always-on-top by default, but can sometimes hide behind other windows:
+
+1. Check your taskbar/dock for the MiniFy icon
+2. Alt+Tab (Windows/Linux) or Cmd+Tab (macOS) to cycle through windows
+3. If all else fails, restart MiniFy from your application menu
+
+## What's next?
+
+Now that you're up and running with MiniFy:
+
+<CardGroup cols={2}>
+  <Card title="Explore themes" icon="palette" href="/features/themes">
+    Try all 8 built-in themes or create your own
+  </Card>
+  <Card title="Set up AI DJ" icon="robot" href="#using-the-ai-dj">
+    Connect your favorite AI provider for smart recommendations
+  </Card>
+  <Card title="Join the community" icon="discord" href="https://discord.gg/haNyuz2zQ5">
+    Get help and share your custom themes
+  </Card>
+  <Card title="Contribute" icon="github" href="https://github.com/ModioStudio/MiniFy">
+    MiniFy is open source—contributions welcome
+  </Card>
+</CardGroup>

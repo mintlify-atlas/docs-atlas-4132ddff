@@ -1,0 +1,377 @@
+---
+title: Settings Commands
+description: Read and write application settings to persistent storage
+---
+
+These commands manage MiniFy's application settings, stored as JSON in the app data directory.
+
+## Storage Location
+
+Settings are persisted to `<app_data_dir>/settings.json`:
+
+- **macOS**: `~/Library/Application Support/com.minify.app/settings.json`
+- **Windows**: `%APPDATA%/com.minify.app/settings.json`
+- **Linux**: `~/.local/share/com.minify.app/settings.json`
+
+<Note>
+Sensitive credentials (tokens, API keys) are stored in the system keyring, **not** in settings.json.
+</Note>
+
+## Settings Type
+
+```typescript
+type AIProviderType = "openai" | "anthropic" | "google" | "groq";
+type MusicProviderType = "spotify" | "youtube";
+
+interface AIProviderConfig {
+  provider: AIProviderType;
+  enabled: boolean;
+}
+
+interface CachedTrack {
+  id: string;
+  name: string;
+  duration_ms: number;
+  artists: Array<{ id: string; name: string }>;
+  album: {
+    id: string;
+    name: string;
+    images: Array<{ url: string; height: number; width: number }>;
+  };
+  uri: string;
+  provider: MusicProviderType;
+}
+
+interface LastPlayedTrack {
+  track: CachedTrack;
+  progress_ms: number;
+  cached_at: number; // Unix timestamp
+}
+
+interface Settings {
+  first_boot_done: boolean;
+  layout: string;                             // "LayoutA", "LayoutB", etc.
+  theme: string;                              // "dark", "light", custom theme name
+  ai_providers: AIProviderConfig[];           // Enabled AI providers
+  active_ai_provider: AIProviderType | null;  // Currently selected provider
+  active_music_provider: MusicProviderType | null; // Currently selected music provider
+  show_ai_queue_border: boolean;              // UI preference
+  discord_rpc_enabled: boolean;               // Discord Rich Presence toggle
+  last_played_track: LastPlayedTrack | null;  // For restoring playback
+}
+```
+
+## Commands
+
+### read_settings
+
+Read the current settings from disk.
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+const settings = await invoke<Settings>("read_settings");
+
+console.log("Theme:", settings.theme);
+console.log("Layout:", settings.layout);
+```
+
+<ResponseField name="settings" type="Settings">
+  The current settings object. Returns defaults if no settings file exists.
+</ResponseField>
+
+**Default Values**
+
+If `settings.json` doesn't exist, returns:
+
+```typescript
+{
+  first_boot_done: false,
+  layout: "LayoutA",
+  theme: "dark",
+  ai_providers: [],
+  active_ai_provider: null,
+  active_music_provider: "spotify",
+  show_ai_queue_border: true,
+  discord_rpc_enabled: true,
+  last_played_track: null
+}
+```
+
+**Source**: `settings.rs:102-114`
+
+---
+
+### write_settings
+
+Write settings to disk.
+
+```typescript
+const newSettings: Settings = {
+  first_boot_done: true,
+  layout: "LayoutB",
+  theme: "dark",
+  ai_providers: [
+    { provider: "openai", enabled: true },
+    { provider: "anthropic", enabled: false }
+  ],
+  active_ai_provider: "openai",
+  active_music_provider: "spotify",
+  show_ai_queue_border: true,
+  discord_rpc_enabled: false,
+  last_played_track: null
+};
+
+const success = await invoke<boolean>("write_settings", { 
+  settings: newSettings 
+});
+
+if (!success) {
+  console.error("Failed to write settings");
+}
+```
+
+<ParamField path="settings" type="Settings" required>
+  Complete settings object to write
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if write succeeded, `false` on failure
+</ResponseField>
+
+**Behavior**
+- Creates parent directory if it doesn't exist
+- Writes pretty-printed JSON
+- Overwrites existing file completely (not a merge)
+
+<Warning>
+This command **replaces** the entire settings file. To update specific fields, read first, merge changes, then write.
+</Warning>
+
+**Source**: `settings.rs:116-135`
+
+---
+
+### clear_settings
+
+Delete the settings file.
+
+```typescript
+const success = await invoke<boolean>("clear_settings");
+```
+
+<ResponseField name="success" type="boolean">
+  `true` if file was deleted or didn't exist, `false` on error
+</ResponseField>
+
+**Effects**
+- Removes `settings.json` from app data directory
+- Next `read_settings` call will return defaults
+- Does **not** affect keyring credentials
+
+**Source**: `settings.rs:137-146`
+
+---
+
+## Example: Partial Settings Update
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+/**
+ * Update specific settings fields without replacing the entire object
+ */
+async function updateSettings(updates: Partial<Settings>) {
+  // 1. Read current settings
+  const current = await invoke<Settings>("read_settings");
+  
+  // 2. Merge updates
+  const merged: Settings = { ...current, ...updates };
+  
+  // 3. Write back
+  const success = await invoke<boolean>("write_settings", { 
+    settings: merged 
+  });
+  
+  if (!success) {
+    throw new Error("Failed to write settings");
+  }
+}
+
+// Usage: Change theme without affecting other settings
+await updateSettings({ theme: "dracula" });
+
+// Usage: Enable Discord RPC
+await updateSettings({ discord_rpc_enabled: true });
+
+// Usage: Save last played track for resume
+await updateSettings({
+  last_played_track: {
+    track: {
+      id: "track123",
+      name: "Song Title",
+      duration_ms: 180000,
+      artists: [{ id: "artist1", name: "Artist Name" }],
+      album: {
+        id: "album1",
+        name: "Album Name",
+        images: [{ url: "https://...", height: 640, width: 640 }]
+      },
+      uri: "spotify:track:track123",
+      provider: "spotify"
+    },
+    progress_ms: 45000,
+    cached_at: Date.now()
+  }
+});
+```
+
+## Example: Settings Hook (React)
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+
+function useSettings() {
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    invoke<Settings>("read_settings")
+      .then(setSettings)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+  
+  const updateSettings = async (updates: Partial<Settings>) => {
+    if (!settings) return;
+    
+    const merged = { ...settings, ...updates };
+    const success = await invoke<boolean>("write_settings", { 
+      settings: merged 
+    });
+    
+    if (success) {
+      setSettings(merged);
+    } else {
+      throw new Error("Failed to write settings");
+    }
+  };
+  
+  return { settings, loading, updateSettings };
+}
+
+// Usage in component
+function SettingsPanel() {
+  const { settings, loading, updateSettings } = useSettings();
+  
+  if (loading) return <div>Loading...</div>;
+  if (!settings) return <div>Error loading settings</div>;
+  
+  return (
+    <div>
+      <label>
+        <input
+          type="checkbox"
+          checked={settings.discord_rpc_enabled}
+          onChange={(e) => 
+            updateSettings({ discord_rpc_enabled: e.target.checked })
+          }
+        />
+        Enable Discord Rich Presence
+      </label>
+      
+      <select
+        value={settings.theme}
+        onChange={(e) => updateSettings({ theme: e.target.value })}
+      >
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+      </select>
+    </div>
+  );
+}
+```
+
+## Example: First Boot Detection
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+async function checkFirstBoot() {
+  const settings = await invoke<Settings>("read_settings");
+  
+  if (!settings.first_boot_done) {
+    // Show onboarding flow
+    console.log("First boot detected, showing welcome screen");
+    
+    // Mark first boot as done
+    await invoke("write_settings", {
+      settings: { ...settings, first_boot_done: true }
+    });
+  } else {
+    // Regular app start
+    console.log("Welcome back!");
+  }
+}
+```
+
+## Example: Restore Playback on Startup
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+async function restorePlayback() {
+  const settings = await invoke<Settings>("read_settings");
+  
+  if (settings.last_played_track) {
+    const { track, progress_ms, cached_at } = settings.last_played_track;
+    
+    // Check if cache is fresh (< 1 hour old)
+    const age = Date.now() - cached_at;
+    if (age < 3600000) {
+      console.log(`Restoring playback: ${track.name} at ${progress_ms}ms`);
+      
+      // Resume playback with saved track and position
+      if (track.provider === "spotify") {
+        await playTrack(track.uri, progress_ms);
+      }
+    } else {
+      console.log("Cached track too old, starting fresh");
+    }
+  }
+}
+```
+
+## Settings vs. Keyring
+
+<Tip>
+Choose the right storage for your data:
+
+**Use Settings (JSON file) for:**
+- User preferences (theme, layout)
+- Application state (last played track)
+- Non-sensitive configuration
+
+**Use Keyring for:**
+- OAuth tokens (Spotify access/refresh tokens)
+- API keys (OpenAI, Anthropic, etc.)
+- Client IDs and secrets
+- Any credential that should be encrypted
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Spotify Commands" icon="spotify" href="/api/spotify-commands">
+    Music provider stored in settings.active_music_provider
+  </Card>
+  
+  <Card title="AI Commands" icon="robot" href="/api/ai-commands">
+    AI provider config stored in settings.ai_providers
+  </Card>
+  
+  <Card title="Theme Commands" icon="palette" href="/api/theme-commands">
+    Custom theme name stored in settings.theme
+  </Card>
+</CardGroup>

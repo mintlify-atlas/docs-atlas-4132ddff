@@ -1,0 +1,447 @@
+---
+title: 'Privacy Policy'
+description: 'Data handling, storage, and privacy practices in MiniFy'
+---
+
+# Privacy Policy
+
+MiniFy is designed with privacy as a core principle. This document explains what data is collected, where it's stored, and how it's used.
+
+## Privacy Principles
+
+<Info>
+**MiniFy is a local-first application.** All your data stays on your device. We don't operate servers that collect, store, or analyze your data.
+</Info>
+
+### What MiniFy Does NOT Do
+
+- ❌ **No data collection servers** - MiniFy doesn't send your data to our servers
+- ❌ **No analytics or tracking** - We don't track how you use the app
+- ❌ **No telemetry** - No usage statistics are collected
+- ❌ **No third-party tracking** - No advertising or analytics SDKs
+- ❌ **No credential proxying** - Your Spotify tokens never pass through our servers
+
+## Data Storage
+
+### Local Storage Only
+
+All MiniFy data is stored locally on your device:
+
+<Tabs>
+  <Tab title="Credentials (Keyring)">
+    **Storage:** OS-level secure keyring
+    
+    **What's stored:**
+    - Spotify access tokens (expires after 1 hour)
+    - Spotify refresh tokens (doesn't expire)
+    - Token expiration timestamps
+    - Spotify Client ID (if custom)
+    - AI provider API keys (OpenAI, Anthropic, Google, Groq)
+    - Selected music provider
+    
+    **Implementation:**
+    ```rust
+    // spotify_auth.rs:16
+    const KEYRING_SERVICE: &str = "minify";
+    
+    // All credentials stored under "minify" service
+    fn entry(key: &str) -> Result<Entry, keyring::Error> {
+        Entry::new(KEYRING_SERVICE, key)
+    }
+    ```
+    
+    **Security:** Encrypted by your OS, protected by your user account password
+    
+    See [Credential Storage](/security/credential-storage) for details.
+  </Tab>
+  
+  <Tab title="Application Data">
+    **Storage:** Standard OS application data directories
+    
+    **Typical locations:**
+    - **Windows:** `C:\Users\<username>\AppData\Roaming\minify\`
+    - **macOS:** `~/Library/Application Support/minify/`
+    - **Linux:** `~/.config/minify/` or `~/.local/share/minify/`
+    
+    **What's stored:**
+    - App settings and preferences
+    - Window size and position
+    - UI state (last viewed tab, etc.)
+    - Theme preferences
+    - Local cache of recently played tracks
+    
+    **Security:** Protected by OS file permissions (user-readable only)
+    
+    <Note>
+    No credentials are stored in application data directories - only in the secure keyring.
+    </Note>
+  </Tab>
+  
+  <Tab title="In-Memory Cache">
+    **Storage:** Process memory (RAM)
+    
+    **What's cached:**
+    ```rust
+    // spotify_auth.rs:23-27
+    lazy_static::lazy_static! {
+        static ref CLIENT_ID_CACHE: Arc<Mutex<Option<String>>>;
+        static ref TOKENS_CACHE: Arc<Mutex<Option<SpotifyTokens>>>;
+        static ref MUSIC_PROVIDER_CACHE: Arc<Mutex<Option<String>>>;
+    }
+    
+    // ai_keyring.rs:9-11
+    lazy_static::lazy_static! {
+        static ref AI_KEY_CACHE: Arc<Mutex<HashMap<String, String>>>;
+    }
+    ```
+    
+    **Purpose:** Reduce keyring access frequency for better performance
+    
+    **Lifetime:** Cleared when app closes or credentials are cleared
+    
+    **Security:** Process memory is protected by OS memory isolation
+  </Tab>
+</Tabs>
+
+## Data Sharing
+
+### Direct Connections Only
+
+MiniFy communicates directly with service providers - your data never goes through our servers:
+
+<Steps>
+  <Step title="Spotify API">
+    **Direct connection to:** `api.spotify.com`
+    
+    **What's sent:**
+    - OAuth access token (in Authorization header)
+    - API requests (play, pause, skip, search, etc.)
+    
+    **Implementation:**
+    ```rust
+    // spotify_auth.rs:243-258
+    pub async fn verify_spotify_access(access_token: &str) -> Result<(), String> {
+        let client = reqwest::Client::new();
+        let response = client
+            .get("https://api.spotify.com/v1/me")
+            .bearer_auth(access_token)  // Direct to Spotify
+            .send()
+            .await?;
+    }
+    ```
+    
+    **Privacy:** Subject to [Spotify's Privacy Policy](https://www.spotify.com/privacy)
+  </Step>
+  
+  <Step title="Spotify OAuth">
+    **Direct connection to:** `accounts.spotify.com`
+    
+    **What's sent:**
+    - Authorization code (during OAuth flow)
+    - Code verifier (PKCE proof)
+    - Client ID
+    - Refresh token (when refreshing access)
+    
+    **Implementation:**
+    ```rust
+    // spotify_auth.rs:336-343
+    let response = client
+        .post("https://accounts.spotify.com/api/token")  // Direct to Spotify
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .form(&form)
+        .send()
+        .await?;
+    ```
+    
+    **Privacy:** OAuth tokens are obtained directly from Spotify, never proxied
+  </Step>
+  
+  <Step title="AI Providers">
+    **Direct connections to:**
+    - OpenAI: `api.openai.com`
+    - Anthropic: `api.anthropic.com`
+    - Google: `generativelanguage.googleapis.com`
+    - Groq: `api.groq.com`
+    
+    **What's sent:**
+    - Your API key (in Authorization header)
+    - Playlist generation prompts
+    - AI feature requests
+    
+    **Privacy:** Subject to each provider's privacy policy
+    
+    <Info>
+    AI features are opt-in. MiniFy doesn't communicate with AI providers unless you explicitly use AI features.
+    </Info>
+  </Step>
+</Steps>
+
+## Network Traffic
+
+### Local OAuth Server
+
+During authentication, MiniFy starts a local server:
+
+```rust
+// spotify_auth.rs:451-452
+let addr: SocketAddr = "127.0.0.1:3000".parse().unwrap();
+let listener = tokio::net::TcpListener::bind(addr).await?;
+```
+
+**Purpose:** Receive OAuth callback from Spotify
+
+**Exposure:** Only accessible from localhost (127.0.0.1)
+
+**Lifetime:** Automatically shut down after successful auth or 5-minute timeout
+
+**Security:** Cannot be accessed from outside your device
+
+### No External Connections
+
+MiniFy makes no network connections except:
+
+1. **Spotify API/OAuth** (required for music control)
+2. **AI provider APIs** (only when you use AI features)
+
+<Warning>
+If you see unexpected network activity from MiniFy, please report it as a security issue.
+</Warning>
+
+## Data You Provide
+
+### Required Data
+
+<Steps>
+  <Step title="Spotify Authentication">
+    **What:** OAuth authorization
+    
+    **Why:** Required to control Spotify playback
+    
+    **Storage:** Access/refresh tokens in OS keyring
+    
+    **Can be deleted:** Yes, via app settings or [clear_credentials](/security/credential-storage#deleting-credentials)
+  </Step>
+  
+  <Step title="Music Provider">
+    **What:** Selected music service ("spotify")
+    
+    **Why:** MiniFy may support multiple services in the future
+    
+    **Storage:** OS keyring
+    
+    **Can be deleted:** Yes, cleared with credentials
+  </Step>
+</Steps>
+
+### Optional Data
+
+<Steps>
+  <Step title="Custom Spotify Client ID">
+    **What:** Your own Spotify app client ID
+    
+    **Why:** Use your own Spotify app instead of MiniFy's default
+    
+    **Storage:** OS keyring
+    
+    **Can be deleted:** Yes, via app settings
+    
+    **Default:** MiniFy has an embedded client ID (if provided at build time)
+  </Step>
+  
+  <Step title="AI Provider API Keys">
+    **What:** API keys for OpenAI, Anthropic, Google, or Groq
+    
+    **Why:** Enable AI-powered playlist generation
+    
+    **Storage:** OS keyring with prefix `ai_key_`
+    
+    **Can be deleted:** Yes, individually or all at once:
+    
+    ```rust
+    // ai_keyring.rs:116-129
+    #[tauri::command]
+    pub async fn delete_ai_api_key(provider: String) -> Result<(), String>
+    
+    // ai_keyring.rs:146-163
+    #[tauri::command]
+    pub async fn clear_all_ai_keys() -> Result<(), String>
+    ```
+  </Step>
+</Steps>
+
+## Data Retention
+
+### Automatic Expiration
+
+<Tabs>
+  <Tab title="Access Tokens">
+    **Expires:** After 1 hour
+    
+    **Auto-refresh:** Yes, using refresh token
+    
+    ```rust
+    // spotify_auth.rs:643-656
+    pub fn spawn_token_refresh_task(app: AppHandle) {
+        rt::spawn(async move {
+            loop {
+                sleep(std::time::Duration::from_secs(300)).await;
+                if let Ok(tokens) = get_tokens().await {
+                    let now = Utc::now().timestamp();
+                    if now + 300 >= tokens.expires_at {
+                        let _ = refresh_access_token().await;  // Auto-refresh
+                    }
+                }
+            }
+        });
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Refresh Tokens">
+    **Expires:** Never (until you revoke access)
+    
+    **Revoke access:**
+    1. Visit [Spotify Account Apps](https://www.spotify.com/account/apps/)
+    2. Find "MiniFy" (or your custom app name)
+    3. Click **Remove Access**
+    
+    After revoking, MiniFy can no longer access your Spotify account.
+  </Tab>
+  
+  <Tab title="In-Memory Cache">
+    **Cleared when:**
+    - App closes/restarts
+    - Credentials are cleared via settings
+    - Manual sign-out
+    
+    ```rust
+    // spotify_auth.rs:39-43
+    fn clear_cached_tokens() {
+        if let Ok(mut cache) = TOKENS_CACHE.lock() {
+            *cache = None;
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Manual Deletion
+
+You can delete all MiniFy data at any time:
+
+<Steps>
+  <Step title="Clear Credentials">
+    **Via MiniFy UI:** Settings → Clear Credentials
+    
+    **Effect:**
+    - Removes all tokens from keyring
+    - Clears in-memory caches
+    - Stops OAuth server if running
+    - Signs you out of MiniFy
+    
+    **Implementation:** See [Credential Storage](/security/credential-storage#deleting-credentials) (`spotify_auth.rs:300-324`)
+  </Step>
+  
+  <Step title="Uninstall MiniFy">
+    **Effect:**
+    - Removes application files
+    - May not remove keyring credentials (OS-dependent)
+    
+    **Recommendation:** Clear credentials before uninstalling
+  </Step>
+  
+  <Step title="Manual Keyring Cleanup">
+    See [Manual Credential Management](/security/credential-storage#manual-credential-management) for OS-specific instructions.
+  </Step>
+</Steps>
+
+## Third-Party Services
+
+MiniFy connects to third-party services that have their own privacy policies:
+
+| Service | Purpose | Privacy Policy |
+|---------|---------|----------------|
+| **Spotify** | Music streaming and control | [spotify.com/privacy](https://www.spotify.com/privacy) |
+| **OpenAI** | AI playlist generation (optional) | [openai.com/privacy](https://openai.com/privacy) |
+| **Anthropic** | AI playlist generation (optional) | [anthropic.com/privacy](https://www.anthropic.com/privacy) |
+| **Google AI** | AI playlist generation (optional) | [google.com/privacy](https://policies.google.com/privacy) |
+| **Groq** | AI playlist generation (optional) | [groq.com/privacy](https://groq.com/privacy-policy/) |
+
+<Note>
+MiniFy is not responsible for the privacy practices of third-party services. Review their policies independently.
+</Note>
+
+## Your Rights
+
+### Data Access
+
+All your MiniFy data is stored locally. You have complete access:
+
+- **Credentials:** View via OS keyring tools (see [Credential Storage](/security/credential-storage))
+- **Settings:** Located in standard app data directories
+- **Source code:** MiniFy is open source - audit the code yourself
+
+### Data Portability
+
+Your data never leaves your device (except direct API calls), so there's no data to export from MiniFy servers. Your Spotify data is exportable via [Spotify's Data Download](https://www.spotify.com/account/privacy/).
+
+### Data Deletion
+
+You have complete control to delete MiniFy data:
+
+1. **In-app:** Settings → Clear Credentials
+2. **OS keyring:** Manual deletion (see [Manual Credential Management](/security/credential-storage#manual-credential-management))
+3. **App data:** Delete app data directories
+4. **Spotify data:** Revoke access at [spotify.com/account/apps](https://www.spotify.com/account/apps/)
+
+## Security Practices
+
+### What MiniFy Does
+
+✅ **Uses OS secure keyring** for all credentials
+
+✅ **Implements OAuth PKCE** for secure authentication
+
+✅ **Direct API connections** (no proxy servers)
+
+✅ **Automatic token refresh** (reduces exposure time)
+
+✅ **Local-only server** for OAuth callbacks (127.0.0.1)
+
+✅ **State nonce validation** (CSRF protection)
+
+### What You Should Do
+
+<Warning>
+**Protect your OS account:**
+- Use a strong password for your computer
+- Enable full-disk encryption (BitLocker/FileVault/LUKS)
+- Lock your screen when away
+- Keep your OS updated
+
+Keyring security depends on your OS account security.
+</Warning>
+
+## Open Source Transparency
+
+MiniFy is open source. You can:
+
+- **Audit the code** to verify privacy claims
+- **Build from source** to ensure no hidden tracking
+- **Contribute** to improve security and privacy
+- **Report issues** if you find privacy concerns
+
+## Updates to This Policy
+
+This privacy policy may be updated as MiniFy adds features. Check the documentation for the latest version.
+
+**Last updated:** [Document creation date]
+
+## Contact
+
+For privacy concerns or questions, please open an issue on the MiniFy GitHub repository.
+
+## Related Documentation
+
+- [Authentication](/security/authentication) - OAuth PKCE implementation details
+- [Credential Storage](/security/credential-storage) - How credentials are stored securely

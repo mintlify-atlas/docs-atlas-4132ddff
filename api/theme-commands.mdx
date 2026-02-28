@@ -1,0 +1,640 @@
+---
+title: Theme Commands
+description: Create, load, and manage custom visual themes
+---
+
+These commands manage custom visual themes for MiniFy, stored as JSON files in the app data directory.
+
+## Storage Location
+
+Custom themes are stored in `<app_data_dir>/themes/`:
+
+- **macOS**: `~/Library/Application Support/com.minify.app/themes/`
+- **Windows**: `%APPDATA%/com.minify.app/themes/`
+- **Linux**: `~/.local/share/com.minify.app/themes/`
+
+Each theme is saved as `<sanitized-name>.json` (lowercase, alphanumeric + hyphens/underscores only).
+
+## Theme Structure
+
+```typescript
+interface CustomTheme {
+  name: string; // Display name
+  panel?: {
+    background?: string;      // CSS color
+    borderRadius?: number;    // Pixels
+    shadow?: string;          // CSS box-shadow
+  };
+  settings?: {
+    panelBg?: string;
+    panelBorder?: string;
+    text?: string;
+    textMuted?: string;
+    itemHover?: string;
+    itemActive?: string;
+    accent?: string;
+  };
+  controls?: {
+    iconColor?: string;
+    iconColorActive?: string;
+    iconBackground?: string;
+    iconBackgroundHover?: string;
+  };
+  playbar?: {
+    trackBg?: string;         // Progress track background
+    trackFill?: string;       // Progress fill color
+    thumbColor?: string;      // Scrubber thumb color
+    timeTextColor?: string;
+  };
+  typography?: {
+    songTitle?: {
+      color?: string;
+      weight?: number;        // Font weight (400, 600, etc.)
+    };
+    songArtist?: {
+      color?: string;
+      weight?: number;
+    };
+  };
+  actions?: {
+    iconColor?: string;
+    iconBackground?: string;
+    iconBackgroundHover?: string;
+  };
+  cover?: {
+    borderColor?: string;
+    borderRadius?: number;    // Pixels
+  };
+}
+```
+
+## Commands
+
+### save_custom_theme
+
+Save a custom theme to disk.
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+const theme: CustomTheme = {
+  name: "Dracula",
+  panel: {
+    background: "linear-gradient(135deg, #282a36 0%, #1e1f29 100%)",
+    borderRadius: 16,
+    shadow: "0 8px 32px rgba(0, 0, 0, 0.4)"
+  },
+  controls: {
+    iconColor: "#f8f8f2",
+    iconColorActive: "#bd93f9",
+    iconBackground: "rgba(248, 248, 242, 0.1)",
+    iconBackgroundHover: "rgba(248, 248, 242, 0.2)"
+  },
+  playbar: {
+    trackBg: "rgba(248, 248, 242, 0.1)",
+    trackFill: "#bd93f9",
+    thumbColor: "#f8f8f2",
+    timeTextColor: "#6272a4"
+  },
+  typography: {
+    songTitle: {
+      color: "#f8f8f2",
+      weight: 600
+    },
+    songArtist: {
+      color: "#6272a4",
+      weight: 400
+    }
+  }
+};
+
+const themeName = await invoke<string>("save_custom_theme", {
+  themeJson: JSON.stringify(theme)
+});
+
+console.log(`Saved theme: ${themeName}`);
+```
+
+<ParamField path="themeJson" type="string" required>
+  JSON string of the theme object
+</ParamField>
+
+<ResponseField name="theme_name" type="string">
+  The theme's display name (from `theme.name`)
+</ResponseField>
+
+**Filename Sanitization**
+
+Theme names are sanitized before saving:
+
+```typescript
+"My Cool Theme!" → "my-cool-theme.json"
+"Dracula 🧛" → "dracula.json"
+"Nord_v2 (2024)" → "nord_v2-2024.json"
+```
+
+Rules:
+- Converted to lowercase
+- Non-alphanumeric characters (except `-` and `_`) become `-`
+- Spaces become `-`
+
+**Source**: `custom_themes.rs:112-125`
+
+---
+
+### load_custom_themes
+
+Load all custom themes from disk.
+
+```typescript
+const themes = await invoke<CustomTheme[]>("load_custom_themes");
+
+themes.forEach(theme => {
+  console.log(`Theme: ${theme.name}`);
+  console.log(`  Panel background: ${theme.panel?.background}`);
+});
+```
+
+<ResponseField name="themes" type="CustomTheme[]">
+  Array of all custom themes. Returns empty array if no themes exist.
+</ResponseField>
+
+**Behavior**
+- Scans `themes/` directory for `.json` files
+- Parses each file as a `CustomTheme`
+- Silently skips invalid JSON files
+- Returns empty array if directory doesn't exist
+
+**Source**: `custom_themes.rs:127-149`
+
+---
+
+### delete_custom_theme
+
+Delete a custom theme.
+
+```typescript
+const success = await invoke<boolean>("delete_custom_theme", {
+  themeName: "Dracula"
+});
+
+if (success) {
+  console.log("Theme deleted");
+}
+```
+
+<ParamField path="themeName" type="string" required>
+  Display name of the theme to delete (not the filename)
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  `true` if deleted successfully
+</ResponseField>
+
+**Error Cases**
+- Throws `"Theme not found"` if theme doesn't exist
+- Throws file system error if deletion fails
+
+<Warning>
+This operation cannot be undone. Consider exporting themes before deletion.
+</Warning>
+
+**Source**: `custom_themes.rs:151-164`
+
+---
+
+### export_custom_theme
+
+Export a theme as JSON (for sharing or backup).
+
+```typescript
+const themeJson = await invoke<string>("export_custom_theme", {
+  themeName: "Dracula"
+});
+
+// Save to clipboard or download
+navigator.clipboard.writeText(themeJson);
+
+// Or parse and modify
+const theme = JSON.parse(themeJson) as CustomTheme;
+console.log(theme);
+```
+
+<ParamField path="themeName" type="string" required>
+  Display name of the theme to export
+</ParamField>
+
+<ResponseField name="theme_json" type="string">
+  JSON string representation of the theme
+</ResponseField>
+
+**Error Cases**
+- Throws `"Theme not found"` if theme doesn't exist
+- Throws file system error if read fails
+
+**Use Cases**
+- Copy theme to clipboard for sharing
+- Download theme as `.json` file
+- Create theme variants (export, modify, re-import)
+
+**Source**: `custom_themes.rs:166-178`
+
+---
+
+### validate_theme_json
+
+Validate theme JSON before saving.
+
+```typescript
+const userInput = `{
+  "name": "My Theme",
+  "panel": {
+    "background": "#1e1e1e"
+  }
+}`;
+
+try {
+  const valid = await invoke<boolean>("validate_theme_json", {
+    themeJson: userInput
+  });
+  
+  if (valid) {
+    // Proceed to save
+    await invoke("save_custom_theme", { themeJson: userInput });
+  }
+} catch (error) {
+  // error: "Invalid JSON: expected value at line 1 column 1"
+  console.error("Validation failed:", error);
+}
+```
+
+<ParamField path="themeJson" type="string" required>
+  JSON string to validate
+</ParamField>
+
+<ResponseField name="valid" type="boolean">
+  `true` if JSON is valid CustomTheme format
+</ResponseField>
+
+**Validation Checks**
+- Valid JSON syntax
+- Conforms to `CustomTheme` structure
+- Required `name` field present
+
+**Source**: `custom_themes.rs:180-185`
+
+---
+
+## Example: Theme Editor
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+import { useState } from "react";
+
+function ThemeEditor() {
+  const [themeName, setThemeName] = useState("My Theme");
+  const [panelBg, setPanelBg] = useState("#1e1e1e");
+  const [accentColor, setAccentColor] = useState("#007bff");
+  
+  const handleSave = async () => {
+    const theme: CustomTheme = {
+      name: themeName,
+      panel: {
+        background: panelBg,
+        borderRadius: 12
+      },
+      controls: {
+        iconColorActive: accentColor
+      },
+      playbar: {
+        trackFill: accentColor
+      }
+    };
+    
+    const json = JSON.stringify(theme);
+    
+    // Validate before saving
+    try {
+      await invoke<boolean>("validate_theme_json", { themeJson: json });
+      
+      const name = await invoke<string>("save_custom_theme", { 
+        themeJson: json 
+      });
+      
+      alert(`Theme "${name}" saved!`);
+    } catch (error) {
+      alert(`Failed to save: ${error}`);
+    }
+  };
+  
+  return (
+    <div>
+      <input 
+        value={themeName}
+        onChange={(e) => setThemeName(e.target.value)}
+        placeholder="Theme name"
+      />
+      
+      <input 
+        type="color"
+        value={panelBg}
+        onChange={(e) => setPanelBg(e.target.value)}
+      />
+      
+      <input 
+        type="color"
+        value={accentColor}
+        onChange={(e) => setAccentColor(e.target.value)}
+      />
+      
+      <button onClick={handleSave}>Save Theme</button>
+    </div>
+  );
+}
+```
+
+## Example: Theme Selector
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+
+function ThemeSelector() {
+  const [themes, setThemes] = useState<CustomTheme[]>([]);
+  const [activeTheme, setActiveTheme] = useState<string>("dark");
+  
+  useEffect(() => {
+    loadThemes();
+    loadActiveTheme();
+  }, []);
+  
+  const loadThemes = async () => {
+    const customThemes = await invoke<CustomTheme[]>("load_custom_themes");
+    setThemes(customThemes);
+  };
+  
+  const loadActiveTheme = async () => {
+    const settings = await invoke<Settings>("read_settings");
+    setActiveTheme(settings.theme);
+  };
+  
+  const selectTheme = async (themeName: string) => {
+    const settings = await invoke<Settings>("read_settings");
+    await invoke("write_settings", {
+      settings: { ...settings, theme: themeName }
+    });
+    setActiveTheme(themeName);
+  };
+  
+  const deleteTheme = async (themeName: string) => {
+    if (confirm(`Delete theme "${themeName}"?`)) {
+      try {
+        await invoke<boolean>("delete_custom_theme", { themeName });
+        await loadThemes(); // Refresh list
+      } catch (error) {
+        alert(`Failed to delete: ${error}`);
+      }
+    }
+  };
+  
+  const exportTheme = async (themeName: string) => {
+    try {
+      const json = await invoke<string>("export_custom_theme", { themeName });
+      
+      // Download as file
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${themeName.toLowerCase()}.json`;
+      a.click();
+    } catch (error) {
+      alert(`Failed to export: ${error}`);
+    }
+  };
+  
+  return (
+    <div>
+      <h2>Built-in Themes</h2>
+      <button onClick={() => selectTheme("dark")}
+        disabled={activeTheme === "dark"}>
+        Dark
+      </button>
+      <button onClick={() => selectTheme("light")}
+        disabled={activeTheme === "light"}>
+        Light
+      </button>
+      
+      <h2>Custom Themes</h2>
+      {themes.map(theme => (
+        <div key={theme.name}>
+          <button 
+            onClick={() => selectTheme(theme.name)}
+            disabled={activeTheme === theme.name}
+          >
+            {theme.name} {activeTheme === theme.name && "✓"}
+          </button>
+          
+          <button onClick={() => exportTheme(theme.name)}>
+            Export
+          </button>
+          
+          <button onClick={() => deleteTheme(theme.name)}>
+            Delete
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Example: Theme Import
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+async function importTheme(jsonString: string) {
+  try {
+    // 1. Validate the JSON
+    const valid = await invoke<boolean>("validate_theme_json", {
+      themeJson: jsonString
+    });
+    
+    if (!valid) {
+      throw new Error("Invalid theme format");
+    }
+    
+    // 2. Save the theme
+    const themeName = await invoke<string>("save_custom_theme", {
+      themeJson: jsonString
+    });
+    
+    console.log(`Imported theme: ${themeName}`);
+    
+    // 3. Optionally activate it
+    const settings = await invoke<Settings>("read_settings");
+    await invoke("write_settings", {
+      settings: { ...settings, theme: themeName }
+    });
+    
+    return themeName;
+  } catch (error) {
+    console.error("Import failed:", error);
+    throw error;
+  }
+}
+
+// Usage with file upload
+function ThemeImporter() {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const text = await file.text();
+    
+    try {
+      const themeName = await importTheme(text);
+      alert(`Theme "${themeName}" imported and activated!`);
+    } catch (error) {
+      alert(`Import failed: ${error}`);
+    }
+  };
+  
+  return (
+    <input 
+      type="file" 
+      accept=".json"
+      onChange={handleFileUpload}
+    />
+  );
+}
+```
+
+## Example Theme: Nord
+
+```json
+{
+  "name": "Nord",
+  "panel": {
+    "background": "#2e3440",
+    "borderRadius": 12,
+    "shadow": "0 4px 16px rgba(0, 0, 0, 0.3)"
+  },
+  "settings": {
+    "panelBg": "#3b4252",
+    "panelBorder": "#4c566a",
+    "text": "#eceff4",
+    "textMuted": "#d8dee9",
+    "itemHover": "#434c5e",
+    "itemActive": "#4c566a",
+    "accent": "#88c0d0"
+  },
+  "controls": {
+    "iconColor": "#d8dee9",
+    "iconColorActive": "#88c0d0",
+    "iconBackground": "rgba(216, 222, 233, 0.1)",
+    "iconBackgroundHover": "rgba(216, 222, 233, 0.2)"
+  },
+  "playbar": {
+    "trackBg": "#4c566a",
+    "trackFill": "#88c0d0",
+    "thumbColor": "#eceff4",
+    "timeTextColor": "#d8dee9"
+  },
+  "typography": {
+    "songTitle": {
+      "color": "#eceff4",
+      "weight": 600
+    },
+    "songArtist": {
+      "color": "#d8dee9",
+      "weight": 400
+    }
+  },
+  "actions": {
+    "iconColor": "#d8dee9",
+    "iconBackground": "rgba(216, 222, 233, 0.1)",
+    "iconBackgroundHover": "rgba(216, 222, 233, 0.2)"
+  },
+  "cover": {
+    "borderColor": "#4c566a",
+    "borderRadius": 8
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use CSS Variables for Colors">
+    ```typescript
+    // Instead of hardcoding colors everywhere
+    const theme = {
+      name: "My Theme",
+      panel: { background: "#1e1e1e" },
+      controls: { iconColor: "#1e1e1e" } // Duplicated!
+    };
+    
+    // Define a color palette and reference it
+    const palette = {
+      bg: "#1e1e1e",
+      fg: "#ffffff",
+      accent: "#007bff"
+    };
+    
+    const theme = {
+      name: "My Theme",
+      panel: { background: palette.bg },
+      controls: { iconColor: palette.fg }
+    };
+    ```
+  </Accordion>
+  
+  <Accordion title="Validate Before Saving">
+    Always use `validate_theme_json` before `save_custom_theme` to catch errors early:
+    
+    ```typescript
+    const json = JSON.stringify(theme);
+    
+    try {
+      await invoke("validate_theme_json", { themeJson: json });
+      await invoke("save_custom_theme", { themeJson: json });
+    } catch (error) {
+      // Show user-friendly error
+      alert(`Invalid theme: ${error}`);
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Support Theme Sharing">
+    Make it easy for users to share themes:
+    
+    ```typescript
+    // Export to clipboard
+    const shareTheme = async (themeName: string) => {
+      const json = await invoke<string>("export_custom_theme", { themeName });
+      await navigator.clipboard.writeText(json);
+      alert("Theme copied to clipboard!");
+    };
+    
+    // Import from clipboard
+    const importFromClipboard = async () => {
+      const json = await navigator.clipboard.readText();
+      await importTheme(json);
+    };
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Settings Commands" icon="gear" href="/api/settings-commands">
+    Active theme stored in settings.theme
+  </Card>
+  
+  <Card title="API Overview" icon="book" href="/api/overview">
+    Back to API reference overview
+  </Card>
+</CardGroup>

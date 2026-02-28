@@ -1,0 +1,402 @@
+---
+title: Spotify Commands
+description: OAuth flow, token management, and music provider configuration
+---
+
+These commands handle Spotify OAuth authentication, token storage and refresh, and music provider selection.
+
+## Music Provider Management
+
+### set_music_provider
+
+Set the active music provider (spotify or youtube).
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+await invoke("set_music_provider", { provider: "spotify" });
+```
+
+<ParamField path="provider" type="string" required>
+  Music provider identifier: `"spotify"` or `"youtube"`
+</ParamField>
+
+<ResponseField name="Result" type="void">
+  Returns nothing on success, throws error string on failure
+</ResponseField>
+
+**Source**: `spotify_auth.rs:177-190`
+
+---
+
+### get_music_provider
+
+Retrieve the currently active music provider.
+
+```typescript
+const provider = await invoke<string>("get_music_provider");
+console.log(provider); // "spotify" or "youtube"
+```
+
+<ResponseField name="provider" type="string">
+  The active music provider: `"spotify"` or `"youtube"`
+</ResponseField>
+
+**Source**: `spotify_auth.rs:192-209`
+
+---
+
+### has_music_provider
+
+Check if a music provider has been configured.
+
+```typescript
+const hasProvider = await invoke<boolean>("has_music_provider");
+
+if (!hasProvider) {
+  // Show provider selection UI
+}
+```
+
+<ResponseField name="has_provider" type="boolean">
+  `true` if a provider is configured, `false` otherwise
+</ResponseField>
+
+**Source**: `spotify_auth.rs:211-214`
+
+---
+
+## Client ID Management
+
+### has_spotify_client_id
+
+Check if a Spotify Client ID is available (either embedded or user-provided).
+
+```typescript
+const hasClientId = await invoke<boolean>("has_spotify_client_id");
+```
+
+<ResponseField name="has_client_id" type="boolean">
+  `true` if Client ID is available from environment or keyring
+</ResponseField>
+
+**Implementation Notes**
+- Checks for embedded `SPOTIFY_CLIENT_ID` environment variable first
+- Falls back to user-provided Client ID stored in keyring
+- Uses in-memory cache to minimize keyring access
+
+**Source**: `spotify_auth.rs:106-109`
+
+---
+
+### save_spotify_client_id
+
+Save a user-provided Spotify Client ID to the system keyring.
+
+```typescript
+await invoke("save_spotify_client_id", { 
+  clientId: "a1b2c3d4e5f6" 
+});
+```
+
+<ParamField path="clientId" type="string" required>
+  The Spotify Client ID from Spotify Developer Dashboard
+</ParamField>
+
+<ResponseField name="Result" type="void">
+  Returns nothing on success, throws error on failure
+</ResponseField>
+
+**Validation**
+- Trims whitespace
+- Rejects empty strings
+- Updates in-memory cache
+
+**Source**: `spotify_auth.rs:111-129`
+
+---
+
+### needs_spotify_setup
+
+Check if Spotify setup is required (no Client ID configured).
+
+```typescript
+const needsSetup = await invoke<boolean>("needs_spotify_setup");
+
+if (needsSetup) {
+  // Redirect to setup flow
+}
+```
+
+<ResponseField name="needs_setup" type="boolean">
+  `true` if no Client ID is configured, `false` otherwise
+</ResponseField>
+
+**Source**: `spotify_auth.rs:131-134`
+
+---
+
+## OAuth Flow
+
+### start_oauth_flow
+
+Initiate the Spotify OAuth 2.0 PKCE flow.
+
+```typescript
+import { listen } from "@tauri-apps/api/event";
+
+// Listen for OAuth events
+const unlisten1 = await listen("oauth-success", () => {
+  console.log("OAuth succeeded!");
+});
+
+const unlisten2 = await listen("oauth-failed", (event) => {
+  console.error("OAuth failed:", event.payload.error);
+});
+
+// Start OAuth flow (opens browser)
+await invoke("start_oauth_flow");
+```
+
+<ParamField path="app" type="AppHandle" required>
+  Automatically injected by Tauri
+</ParamField>
+
+<ResponseField name="Result" type="void">
+  Returns immediately after opening browser. Listen to events for completion.
+</ResponseField>
+
+**OAuth Events**
+
+<ResponseField name="oauth-success" type="event">
+  Emitted when OAuth completes successfully and tokens are saved
+</ResponseField>
+
+<ResponseField name="oauth-failed" type="event">
+  Emitted when OAuth fails. Payload contains `{ error: string }`
+</ResponseField>
+
+**Flow Details**
+1. Generates PKCE code verifier and challenge
+2. Spawns local HTTP server on `127.0.0.1:3000`
+3. Opens browser to Spotify authorization URL
+4. Waits for callback with authorization code
+5. Exchanges code for access + refresh tokens
+6. Saves tokens to keyring and emits `oauth-success`
+7. Automatically shuts down after 5 minutes if no callback
+
+**Scopes Requested**
+```
+user-read-playback-state
+user-modify-playback-state
+user-read-currently-playing
+playlist-read-private
+playlist-modify-public
+playlist-modify-private
+user-top-read
+user-read-recently-played
+user-library-read
+```
+
+**Source**: `spotify_auth.rs:388-496`
+
+---
+
+### cancel_oauth_flow
+
+Cancel an in-progress OAuth flow.
+
+```typescript
+await invoke("cancel_oauth_flow");
+```
+
+<ResponseField name="Result" type="void">
+  Shuts down OAuth server and clears auth state
+</ResponseField>
+
+**Source**: `spotify_auth.rs:375-386`
+
+---
+
+## Token Management
+
+### get_tokens
+
+Retrieve stored Spotify access and refresh tokens.
+
+```typescript
+interface SpotifyTokens {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number; // Unix timestamp
+}
+
+const tokens = await invoke<SpotifyTokens>("get_tokens");
+```
+
+<ResponseField name="access_token" type="string">
+  Current Spotify access token (valid for ~1 hour)
+</ResponseField>
+
+<ResponseField name="refresh_token" type="string">
+  Long-lived refresh token for obtaining new access tokens
+</ResponseField>
+
+<ResponseField name="expires_at" type="number">
+  Unix timestamp when access token expires (includes 30-second buffer)
+</ResponseField>
+
+**Caching**
+- First call reads from keyring
+- Subsequent calls return cached value
+- Cache invalidated on token refresh or credential clear
+
+**Source**: `spotify_auth.rs:260-290`
+
+---
+
+### has_valid_tokens
+
+Check if valid (non-expired) tokens are available.
+
+```typescript
+const hasValid = await invoke<boolean>("has_valid_tokens");
+
+if (!hasValid) {
+  // Re-authenticate or refresh
+}
+```
+
+<ResponseField name="has_valid" type="boolean">
+  `true` if tokens exist and haven't expired, `false` otherwise
+</ResponseField>
+
+**Source**: `spotify_auth.rs:292-298`
+
+---
+
+### refresh_access_token
+
+Refresh the access token using the refresh token.
+
+```typescript
+const newTokens = await invoke<SpotifyTokens>("refresh_access_token");
+```
+
+<ResponseField name="tokens" type="SpotifyTokens">
+  Updated tokens with new access token and same (or new) refresh token
+</ResponseField>
+
+**Automatic Refresh**
+A background task automatically refreshes tokens 5 minutes before expiry:
+
+```rust
+// Spawned in lib.rs setup
+pub fn spawn_token_refresh_task(app: AppHandle) {
+    rt::spawn(async move {
+        loop {
+            sleep(Duration::from_secs(300)).await; // Check every 5 min
+            if let Ok(tokens) = get_tokens().await {
+                let now = Utc::now().timestamp();
+                if now + 300 >= tokens.expires_at {
+                    let _ = refresh_access_token().await;
+                }
+            }
+        }
+    });
+}
+```
+
+**Source**: `spotify_auth.rs:596-641`, `spotify_auth.rs:643-656`
+
+---
+
+### clear_credentials
+
+Clear all stored Spotify credentials and cancel any active OAuth flow.
+
+```typescript
+await invoke("clear_credentials");
+```
+
+<ResponseField name="Result" type="void">
+  Removes all tokens and client ID from keyring
+</ResponseField>
+
+**What Gets Cleared**
+- Access token
+- Refresh token
+- Token expiry timestamp
+- Music provider selection
+- Spotify Client ID
+- Active OAuth state
+- All in-memory caches
+
+<Warning>
+This operation cannot be undone. Users will need to re-authenticate.
+</Warning>
+
+**Source**: `spotify_auth.rs:300-324`
+
+---
+
+## Example: Complete OAuth Integration
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+
+async function setupSpotify() {
+  // 1. Check if setup is needed
+  const needsSetup = await invoke<boolean>("needs_spotify_setup");
+  
+  if (needsSetup) {
+    // Prompt user for Client ID
+    const clientId = prompt("Enter your Spotify Client ID:");
+    await invoke("save_spotify_client_id", { clientId });
+  }
+  
+  // 2. Check if we have valid tokens
+  const hasValid = await invoke<boolean>("has_valid_tokens");
+  
+  if (!hasValid) {
+    // 3. Set up OAuth event listeners
+    const unlistenSuccess = await listen("oauth-success", async () => {
+      console.log("OAuth successful!");
+      
+      // 4. Get tokens
+      const tokens = await invoke<SpotifyTokens>("get_tokens");
+      console.log("Access token:", tokens.access_token);
+      
+      unlistenSuccess();
+      unlistenFailed();
+    });
+    
+    const unlistenFailed = await listen("oauth-failed", (event) => {
+      console.error("OAuth failed:", event.payload.error);
+      unlistenSuccess();
+      unlistenFailed();
+    });
+    
+    // 5. Start OAuth flow
+    await invoke("start_oauth_flow");
+  }
+  
+  // 6. Set as active music provider
+  await invoke("set_music_provider", { provider: "spotify" });
+}
+
+setupSpotify();
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="AI Commands" icon="robot" href="/api/ai-commands">
+    Manage AI provider API keys
+  </Card>
+  
+  <Card title="Settings Commands" icon="gear" href="/api/settings-commands">
+    Persist application settings
+  </Card>
+</CardGroup>

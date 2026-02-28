@@ -1,0 +1,248 @@
+---
+title: Player Layouts
+description: Choose from three customizable player layouts to match your workflow
+icon: layout
+---
+
+MiniFy offers three distinct player layouts (A, B, and C), each designed for different use cases and screen sizes. Switch between layouts from the Settings panel.
+
+## Layout A
+
+<img src="/images/layout-a.png" alt="Layout A" />
+
+### Design
+
+Layout A features a horizontal split design with the album cover on the left and track information on the right. This layout prioritizes visual presence while maintaining a clean interface.
+
+**Key Features:**
+- 128×128px album cover with border
+- Track title and artist info in a separate panel
+- Playback bar integrated into the info panel
+- Minimal controls for a streamlined look
+
+### Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Desktop Workflow" icon="desktop">
+    Perfect for users who want to see album art clearly while working. The horizontal layout fits naturally on wider screens.
+  </Card>
+  <Card title="Visual Focus" icon="image">
+    Ideal when you want the album artwork to be the focal point of your mini player.
+  </Card>
+</CardGroup>
+
+### Implementation Details
+
+```tsx
+// Layout A component structure
+<div className="h-full w-full pt-4 text-white">
+  <div className="-mt-1.5 flex gap-5">
+    {/* Album cover - 128px */}
+    <div className="shrink-0">
+      <TrackInfoLayout track={track} variant="cover" size={128} />
+    </div>
+
+    {/* Track info panel */}
+    <div className="flex-1 flex flex-col justify-start rounded-sm border">
+      <div className="ml-4 mt-8">
+        <TrackInfoLayout track={track} variant="title" />
+        <TrackInfoLayout track={track} variant="artist" />
+      </div>
+
+      {/* Playback bar */}
+      <div className="ml-4 mt-4.5 w-80">
+        <PlaybackBar />
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+## Layout B
+
+<img src="/images/layout-b.png" alt="Layout B" />
+
+### Design
+
+Layout B uses a grid-based vertical design with centralized playback controls. It's the most compact layout, optimized for smaller windows.
+
+**Key Features:**
+- 86×86px album cover
+- Centered playback controls (play/pause, next, previous)
+- Add to playlist button (plus icon)
+- Responsive track info with text truncation
+- Bottom-aligned progress bar
+
+### Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Compact Windows" icon="window-minimize">
+    Best for keeping the player small and unobtrusive on your desktop.
+  </Card>
+  <Card title="Quick Controls" icon="gamepad">
+    Ideal when you need easy access to playback controls and playlist management.
+  </Card>
+</CardGroup>
+
+### Implementation Details
+
+```tsx
+// Layout B component structure
+<div className="h-full w-full grid grid-rows-[auto_1fr_auto] px-3 pt-4 pb-6">
+  {/* Header: Cover + Info + Add Button */}
+  <div className="flex gap-4 items-center">
+    <TrackInfoLayout track={track} variant="cover" size={86} />
+    
+    <div className="flex flex-col justify-center flex-1 min-w-0">
+      <TrackInfoLayout track={track} variant="title" />
+      <TrackInfoLayout track={track} variant="artist" />
+    </div>
+
+    {/* Add to playlist button */}
+    <button type="button" onClick={() => onAddToPlaylist(track.id, track.name)}>
+      <PlusCircle size={24} weight="fill" />
+    </button>
+  </div>
+
+  {/* Center: Playback controls */}
+  <div className="flex items-center justify-center">
+    <PlayerControls isPlaying={isPlaying} onTogglePlaying={...} />
+  </div>
+
+  {/* Footer: Progress bar */}
+  <div className="-mt-7">
+    <PlaybackBar />
+  </div>
+</div>
+```
+
+### Add to Playlist Feature
+
+Layout B includes a dedicated button to quickly add the current track to your playlists:
+
+```tsx
+function LayoutB({ onAddToPlaylist }: LayoutBProps) {
+  const [plusHovered, setPlusHovered] = useState<boolean>(false);
+  
+  // Button with hover state
+  <button
+    onClick={() => {
+      if (track && onAddToPlaylist) {
+        onAddToPlaylist(track.id, track.name);
+      }
+    }}
+    disabled={!track || !onAddToPlaylist}
+  >
+    <PlusCircle
+      size={24}
+      weight="fill"
+      color={plusHovered ? "var(--player-controls-color-active)" : "var(--player-controls-color)"}
+    />
+  </button>
+}
+```
+
+## Layout C
+
+<img src="/images/layout-c.png" alt="Layout C" />
+
+### Design
+
+Layout C features a two-column grid layout with the album cover and track info on the left, and controls spread across the right. It balances information density with visual appeal.
+
+**Key Features:**
+- 96×96px album cover
+- Track info with max length truncation (20 characters)
+- Horizontal playback bar in the top-right
+- Bottom-right aligned playback controls
+- Grid-based responsive layout
+
+### Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Balanced Layout" icon="grid">
+    Perfect balance between compact size and information display.
+  </Card>
+  <Card title="Corner Placement" icon="arrow-up-right-from-square">
+    Works well when positioned in screen corners due to its grid structure.
+  </Card>
+</CardGroup>
+
+### Implementation Details
+
+```tsx
+// Layout C component structure
+<div className="h-full w-full grid grid-rows-[auto_1fr_auto] px-3 pt-4 pb-6">
+  <div className="grid grid-cols-[auto_1fr] gap-4 h-full">
+    {/* Left column: Cover + Info */}
+    <div className="flex flex-col gap-2">
+      <TrackInfoLayout track={track} variant="cover" size={96} />
+      
+      <div className="mt-10">
+        <TrackInfoLayout track={track} variant="title" maxLength={20} />
+        <TrackInfoLayout track={track} variant="artist" maxLength={20} />
+      </div>
+    </div>
+
+    {/* Right column: Playback bar */}
+    <div className="-ml-14 w-auto mt-5">
+      <PlaybackBar />
+    </div>
+
+    {/* Bottom-right: Controls */}
+    <div className="flex justify-end">
+      <PlayerControls isPlaying={isPlaying} onTogglePlaying={...} />
+    </div>
+  </div>
+</div>
+```
+
+## Switching Layouts
+
+Change your layout from the Settings panel:
+
+<Steps>
+  <Step title="Open Settings">
+    Press `Ctrl+E` or right-click and select Settings
+  </Step>
+  <Step title="Select Layout">
+    Choose Layout A, B, or C from the dropdown menu
+  </Step>
+  <Step title="Apply">
+    The layout changes immediately - no restart required
+  </Step>
+</Steps>
+
+<Note>
+  Your layout preference is saved automatically and persists across sessions.
+</Note>
+
+## Theme Integration
+
+All layouts respect your active theme's CSS variables:
+
+- `--player-panel-bg` - Background color
+- `--text-color` - Text color
+- `--player-panel-shadow` - Shadow effect
+- `--player-cover-border-color` - Album cover border
+- `--player-controls-color` - Control icons color
+- `--player-controls-color-active` - Active/hover state
+
+```css
+/* Example theme application */
+.flex-1 {
+  background: var(--player-panel-bg);
+  color: var(--text-color);
+  box-shadow: var(--player-panel-shadow);
+}
+```
+
+## Choosing the Right Layout
+
+<Accordion title="Which layout should I use?">
+  - **Layout A**: Best for wide screens, visual focus on album art
+  - **Layout B**: Most compact, great for quick controls and small windows
+  - **Layout C**: Balanced option, works well in corners
+  
+  Try each one to see which fits your workflow!
+</Accordion>

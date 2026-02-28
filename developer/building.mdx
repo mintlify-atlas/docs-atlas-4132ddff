@@ -1,0 +1,532 @@
+---
+title: Building from Source
+description: Complete guide to building MiniFy desktop app and website from source
+---
+
+## Prerequisites
+
+Before building MiniFy, ensure you have the required tools installed on your system.
+
+### Required Tools
+
+<Steps>
+  <Step title="Node.js">
+    **Node.js 18 or later** is required.
+    
+    ```bash
+    # Verify installation
+    node --version
+    # Should output v18.x.x or higher
+    ```
+    
+    Download from [nodejs.org](https://nodejs.org)
+  </Step>
+  
+  <Step title="pnpm">
+    **pnpm 9 or later** for package management.
+    
+    ```bash
+    # Install pnpm globally
+    npm install -g pnpm@9
+    
+    # Verify installation
+    pnpm --version
+    # Should output 9.x.x or higher
+    ```
+  </Step>
+  
+  <Step title="Rust Toolchain">
+    **Rust 1.70+** is required for the Tauri backend.
+    
+    ```bash
+    # Install Rust via rustup
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    
+    # Verify installation
+    rustc --version
+    cargo --version
+    ```
+    
+    Visit [rust-lang.org](https://www.rust-lang.org/tools/install) for detailed instructions.
+  </Step>
+  
+  <Step title="Platform-Specific Dependencies">
+    Tauri requires additional system dependencies based on your platform.
+    
+    <Tabs>
+      <Tab title="macOS">
+        ```bash
+        # Xcode Command Line Tools
+        xcode-select --install
+        ```
+        
+        No additional dependencies required.
+      </Tab>
+      
+      <Tab title="Windows">
+        Install the following:
+        - **Microsoft Visual Studio C++ Build Tools**
+        - **WebView2** (usually pre-installed on Windows 10/11)
+        
+        Download from:
+        - [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+        - [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
+      </Tab>
+      
+      <Tab title="Linux">
+        <Accordion title="Debian/Ubuntu">
+          ```bash
+          sudo apt update
+          sudo apt install libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+          ```
+        </Accordion>
+        
+        <Accordion title="Arch Linux">
+          ```bash
+          sudo pacman -Syu
+          sudo pacman -S webkit2gtk-4.1 \
+            base-devel \
+            curl \
+            wget \
+            file \
+            openssl \
+            appmenu-gtk-module \
+            gtk3 \
+            libappindicator-gtk3 \
+            librsvg \
+            libvips
+          ```
+        </Accordion>
+        
+        <Accordion title="Fedora">
+          ```bash
+          sudo dnf check-update
+          sudo dnf install webkit2gtk4.1-devel \
+            openssl-devel \
+            curl \
+            wget \
+            file \
+            libappindicator-gtk3-devel \
+            librsvg2-devel
+          sudo dnf group install "C Development Tools and Libraries"
+          ```
+        </Accordion>
+      </Tab>
+    </Tabs>
+    
+    <Note>
+      For detailed platform requirements, see [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/)
+    </Note>
+  </Step>
+</Steps>
+
+## Clone the Repository
+
+```bash
+# Clone MiniFy repository
+git clone https://github.com/ModioStudio/MiniFy.git
+cd MiniFy
+```
+
+## Install Dependencies
+
+Install all workspace dependencies using pnpm:
+
+```bash
+pnpm install
+```
+
+This installs dependencies for:
+- Desktop app (`apps/desktop`)
+- Landing site (`apps/www`)
+- Documentation (`apps/docs`)
+- Root workspace tooling (Turborepo, Biome)
+
+<Note>
+  The monorepo uses pnpm workspaces. All packages are linked automatically.
+</Note>
+
+## Development Builds
+
+### Desktop Application
+
+Run the Tauri desktop app in development mode:
+
+```bash
+pnpm desktop:dev
+```
+
+**What happens:**
+- Starts Vite dev server for React frontend (hot reload enabled)
+- Compiles and launches Rust backend with auto-restart on changes
+- Opens frameless window with DevTools available
+- Watches for file changes in both frontend and backend
+
+<Tabs>
+  <Tab title="First Launch">
+    On first launch, you'll be prompted to:
+    
+    1. **Enter Spotify Client ID**
+       - Create a Spotify app at [developer.spotify.com](https://developer.spotify.com/dashboard)
+       - Add redirect URI: `http://localhost:8888/callback`
+       - Copy your Client ID
+    
+    2. **Authorize Spotify**
+       - Browser opens for OAuth login
+       - Authorize the app
+       - Redirected back to MiniFy
+    
+    3. **Configure Appearance**
+       - Choose player layout (A, B, or C)
+       - Select theme
+  </Tab>
+  
+  <Tab title="DevTools">
+    Access DevTools in development mode:
+    
+    - **macOS**: `Cmd + Option + I`
+    - **Windows/Linux**: `Ctrl + Shift + I`
+    - **Context Menu**: Right-click → "Inspect Element"
+  </Tab>
+  
+  <Tab title="Clear Data">
+    Reset all credentials and settings:
+    
+    ```bash
+    pnpm desktop:clear
+    ```
+    
+    This removes:
+    - Spotify access/refresh tokens from OS keyring
+    - AI provider API keys
+    - All app settings and preferences
+  </Tab>
+</Tabs>
+
+### Landing Site
+
+Run the Next.js landing site:
+
+```bash
+pnpm www:dev
+```
+
+- Opens at `http://localhost:3000`
+- Hot reload enabled
+- Turbopack-powered fast refresh
+
+### Documentation
+
+Run the Mintlify documentation site:
+
+```bash
+pnpm docs:dev
+```
+
+- Opens at `http://localhost:3001`
+- Live reload on content changes
+
+## Production Builds
+
+### Desktop Application
+
+Build the production desktop app:
+
+```bash
+pnpm desktop:build
+```
+
+<Steps>
+  <Step title="TypeScript Compilation">
+    Validates types and generates declarations
+    ```bash
+    tsc
+    ```
+  </Step>
+  
+  <Step title="Vite Build">
+    Bundles and optimizes React frontend
+    ```bash
+    vite build
+    ```
+    
+    Output: `apps/desktop/dist/`
+  </Step>
+  
+  <Step title="Tauri Build">
+    Compiles Rust backend and packages with frontend
+    ```bash
+    tauri build
+    ```
+    
+    Creates platform-specific bundles in `apps/desktop/src-tauri/target/release/bundle/`
+  </Step>
+</Steps>
+
+**Build Artifacts:**
+
+<Tabs>
+  <Tab title="macOS">
+    ```
+    apps/desktop/src-tauri/target/release/bundle/
+    ├── dmg/
+    │   └── MiniFy_0.1.0_aarch64.dmg      # Apple Silicon
+    │   └── MiniFy_0.1.0_x64.dmg          # Intel
+    └── macos/
+        └── MiniFy.app                     # Application bundle
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    ```
+    apps/desktop/src-tauri/target/release/bundle/
+    ├── msi/
+    │   └── MiniFy_0.1.0_x64_en-US.msi    # Windows Installer
+    └── nsis/
+        └── MiniFy_0.1.0_x64-setup.exe    # NSIS Installer
+    ```
+  </Tab>
+  
+  <Tab title="Linux">
+    ```
+    apps/desktop/src-tauri/target/release/bundle/
+    ├── deb/
+    │   └── minify_0.1.0_amd64.deb        # Debian package
+    ├── appimage/
+    │   └── minify_0.1.0_amd64.AppImage   # AppImage
+    └── rpm/
+        └── minify-0.1.0-1.x86_64.rpm     # RPM package
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Production builds are unsigned by default. For distribution, you'll need to sign the bundles with your developer certificate.
+</Warning>
+
+### Landing Site
+
+Build the Next.js site for production:
+
+```bash
+pnpm www:build
+```
+
+- Output: `apps/www/.next/`
+- Optimized for serverless deployment (Vercel)
+- Static generation for marketing pages
+
+### Documentation
+
+Build the documentation site:
+
+```bash
+pnpm docs:build
+```
+
+- Output: `apps/docs/.next/`
+- Static site generation via Mintlify
+
+## Available Scripts
+
+All scripts defined in root `package.json`:
+
+<CodeGroup>
+```json Root Scripts
+{
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "biome format --write .",
+    "check": "biome check --write .",
+    "desktop:dev": "pnpm --filter desktop tauri dev",
+    "desktop:build": "pnpm --filter desktop build",
+    "desktop:clear": "pnpm --filter desktop clear-auth",
+    "www:dev": "pnpm --filter www dev",
+    "www:build": "pnpm --filter www build",
+    "docs:dev": "pnpm --filter docs dev",
+    "docs:build": "pnpm --filter docs build",
+    "docs:preview": "pnpm --filter docs preview"
+  }
+}
+```
+</CodeGroup>
+
+### Monorepo Commands
+
+<CardGroup cols={2}>
+  <Card title="dev" icon="play">
+    Run all dev servers in parallel
+    ```bash
+    pnpm dev
+    ```
+  </Card>
+  
+  <Card title="build" icon="hammer">
+    Build all apps in the workspace
+    ```bash
+    pnpm build
+    ```
+  </Card>
+  
+  <Card title="lint" icon="check">
+    Run Biome linter across all packages
+    ```bash
+    pnpm lint
+    ```
+  </Card>
+  
+  <Card title="format" icon="sparkles">
+    Format code with Biome
+    ```bash
+    pnpm format
+    ```
+  </Card>
+</CardGroup>
+
+## Turborepo Caching
+
+MiniFy uses Turborepo for intelligent build caching:
+
+<CodeGroup>
+```json turbo.json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "build/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    }
+  }
+}
+```
+</CodeGroup>
+
+**Benefits:**
+- Caches build outputs based on input files
+- Skips unchanged packages in monorepo
+- Parallelizes independent tasks
+- Remote caching support (optional)
+
+## Code Quality
+
+### Biome
+
+MiniFy uses Biome (Rust-based) instead of ESLint + Prettier:
+
+```bash
+# Check and fix issues
+pnpm check
+
+# Format code
+pnpm format
+
+# Lint only
+pnpm lint
+```
+
+### Git Hooks
+
+Optionally install Lefthook for pre-commit hooks:
+
+```bash
+pnpm dlx lefthook install
+```
+
+This runs linting and formatting checks before each commit.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Build fails with 'missing dependencies'">
+    Ensure all platform-specific dependencies are installed:
+    
+    ```bash
+    # Re-check Tauri prerequisites
+    # Visit: https://v2.tauri.app/start/prerequisites/
+    
+    # Reinstall workspace dependencies
+    pnpm install --force
+    ```
+  </Accordion>
+  
+  <Accordion title="Rust compilation errors">
+    Update Rust toolchain to the latest version:
+    
+    ```bash
+    rustup update stable
+    cargo clean
+    pnpm desktop:build
+    ```
+  </Accordion>
+  
+  <Accordion title="'command not found: pnpm'">
+    Install pnpm globally:
+    
+    ```bash
+    npm install -g pnpm@9
+    ```
+    
+    Or use Corepack (Node.js 16.13+):
+    
+    ```bash
+    corepack enable
+    corepack prepare pnpm@9 --activate
+    ```
+  </Accordion>
+  
+  <Accordion title="Port 8888 already in use">
+    The OAuth callback server uses port 8888. If in use:
+    
+    ```bash
+    # Find and kill process using port 8888
+    # macOS/Linux:
+    lsof -ti:8888 | xargs kill -9
+    
+    # Windows:
+    netstat -ano | findstr :8888
+    taskkill /PID <PID> /F
+    ```
+  </Accordion>
+  
+  <Accordion title="Spotify authorization fails">
+    1. Verify redirect URI in Spotify Dashboard:
+       - Must be exactly `http://localhost:8888/callback`
+    
+    2. Clear credentials and retry:
+       ```bash
+       pnpm desktop:clear
+       pnpm desktop:dev
+       ```
+    
+    3. Check if another app is using port 8888
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="sitemap" href="/developer/architecture">
+    Understand MiniFy's technical architecture
+  </Card>
+  
+  <Card title="Contributing" icon="code-pull-request" href="/developer/contributing">
+    Start contributing to MiniFy
+  </Card>
+</CardGroup>
