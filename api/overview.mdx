@@ -31,11 +31,15 @@ const settings = await invoke<Settings>("read_settings");
 
 ## Command Categories
 
-MiniFy's API is organized into five main categories:
+MiniFy's API is organized into seven main categories:
 
 <CardGroup cols={2}>
   <Card title="Spotify Commands" icon="spotify" href="/api/spotify-commands">
-    OAuth flow, token management, and music provider configuration
+    OAuth flow, token management, and music provider configuration for Spotify
+  </Card>
+  
+  <Card title="YouTube Commands" icon="youtube" href="/api/youtube-commands">
+    OAuth flow and credential management for YouTube Music
   </Card>
   
   <Card title="AI Commands" icon="robot" href="/api/ai-commands">
@@ -48,6 +52,10 @@ MiniFy's API is organized into five main categories:
   
   <Card title="Theme Commands" icon="palette" href="/api/theme-commands">
     Create, load, and manage custom visual themes
+  </Card>
+  
+  <Card title="Debug Commands" icon="bug" href="/api/debug-commands">
+    Developer tools and debugging utilities
   </Card>
 </CardGroup>
 
@@ -165,10 +173,18 @@ All Tauri commands are defined in the following source files:
 
 <CardGroup cols={2}>
   <Card title="Spotify Commands" icon="spotify" href="/api/spotify-commands">
-    Start with OAuth and music provider setup
+    Start with Spotify OAuth and music provider setup
+  </Card>
+  
+  <Card title="YouTube Commands" icon="youtube" href="/api/youtube-commands">
+    Set up YouTube Music as an alternative provider
   </Card>
   
   <Card title="AI Commands" icon="robot" href="/api/ai-commands">
     Learn how to manage AI provider keys
+  </Card>
+  
+  <Card title="Settings Commands" icon="gear" href="/api/settings-commands">
+    Manage application settings and preferences
   </Card>
 </CardGroup>

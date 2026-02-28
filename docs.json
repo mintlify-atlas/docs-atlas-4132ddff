@@ -76,9 +76,11 @@
             "pages": [
               "api/overview",
               "api/spotify-commands",
+              "api/youtube-commands",
               "api/ai-commands",
               "api/settings-commands",
-              "api/theme-commands"
+              "api/theme-commands",
+              "api/debug-commands"
             ]
           }
         ]

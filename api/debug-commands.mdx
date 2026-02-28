@@ -1,0 +1,124 @@
+---
+title: Debug commands
+description: Developer utilities for debugging and troubleshooting MiniFy
+---
+
+# Debug commands
+
+MiniFy provides debug utilities to help developers troubleshoot issues and inspect the application state during development.
+
+<Warning>
+These commands are intended for development and debugging purposes only. They should not be exposed in production builds.
+</Warning>
+
+## WebView Developer Tools
+
+### open_webview_devtools
+
+Open the browser developer tools for the Tauri WebView.
+
+```rust
+// debug.rs:5
+#[tauri::command]
+pub fn open_webview_devtools(window: tauri::Window)
+```
+
+**Parameters:**
+
+<ParamField path="window" type="Window">
+  The Tauri window instance (automatically injected by Tauri)
+</ParamField>
+
+**Returns:** `void`
+
+**Usage:**
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrent } from "@tauri-apps/api/window";
+
+// Open developer tools for the current window
+const window = getCurrent();
+await invoke("open_webview_devtools", { window });
+```
+
+<Info>
+Developer tools allow you to inspect the DOM, console logs, network requests, and application state. This is especially useful for debugging UI issues and API calls.
+</Info>
+
+## Development Shortcuts
+
+You can create a keyboard shortcut to quickly open DevTools:
+
+```typescript
+// Example: Open DevTools with Ctrl+Shift+I (or Cmd+Shift+I on macOS)
+document.addEventListener("keydown", async (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "I") {
+    e.preventDefault();
+    const window = getCurrent();
+    await invoke("open_webview_devtools", { window });
+  }
+});
+```
+
+## Common Debug Scenarios
+
+<Accordion title="Debugging OAuth flows">
+  Open DevTools before starting the OAuth flow to see:
+  - Network requests to the OAuth server
+  - Event emissions (oauth-success, oauth-failed)
+  - Token storage in console logs
+  
+  ```typescript
+  await invoke("open_webview_devtools");
+  await invoke("start_oauth_flow");
+  ```
+</Accordion>
+
+<Accordion title="Inspecting playback state">
+  Use DevTools to monitor the playback state updates:
+  
+  ```typescript
+  await invoke("open_webview_devtools");
+  // Then monitor console.log() calls in your playback code
+  ```
+</Accordion>
+
+<Accordion title="Debugging theme rendering">
+  Inspect computed CSS variables and DOM structure:
+  
+  ```typescript
+  await invoke("open_webview_devtools");
+  // Use Elements panel to inspect theme variables
+  ```
+</Accordion>
+
+## Production Builds
+
+<Warning>
+The `open_webview_devtools` command is available in both development and production builds. Consider removing or disabling it in production releases for security.
+</Warning>
+
+To disable DevTools in production, you can add a check:
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+const isDevelopment = import.meta.env.DEV;
+
+if (isDevelopment) {
+  // Only allow DevTools in development
+  await invoke("open_webview_devtools");
+}
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Building" icon="hammer" href="/developer/building">
+    Build MiniFy for development and production
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/developer/contributing">
+    Contribution guidelines for developers
+  </Card>
+</CardGroup>

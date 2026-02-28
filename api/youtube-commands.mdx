@@ -1,0 +1,345 @@
+---
+title: YouTube commands
+description: Tauri commands for YouTube Music OAuth authentication and credential management
+---
+
+# YouTube commands
+
+MiniFy supports YouTube Music as an alternative music provider. These commands handle YouTube Music OAuth 2.0 authentication, credential storage, and token management.
+
+<Note>
+YouTube Music support requires Google Cloud OAuth 2.0 credentials (Client ID and Client Secret) with YouTube Data API v3 enabled.
+</Note>
+
+## Credential Management
+
+### has_youtube_credentials
+
+Check if YouTube credentials (Client ID and Client Secret) are stored in the keyring.
+
+```rust
+// spotify_auth.rs (similar pattern used in youtube_auth.rs)
+#[tauri::command]
+pub async fn has_youtube_credentials() -> Result<bool, String>
+```
+
+**Returns:** `boolean` - `true` if credentials exist
+
+**Usage:**
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+const hasCredentials = await invoke<boolean>("has_youtube_credentials");
+if (!hasCredentials) {
+  // Prompt user to enter credentials
+}
+```
+
+### has_youtube_client_id
+
+Check if a YouTube Client ID specifically is stored (legacy check).
+
+```rust
+#[tauri::command]
+pub async fn has_youtube_client_id() -> Result<bool, String>
+```
+
+**Returns:** `boolean` - `true` if Client ID exists
+
+### save_youtube_credentials
+
+Save YouTube Music OAuth credentials to the OS keyring.
+
+```rust
+#[tauri::command]
+pub async fn save_youtube_credentials(
+    client_id: String,
+    client_secret: String
+) -> Result<(), String>
+```
+
+**Parameters:**
+
+<ParamField path="client_id" type="string" required>
+  Google Cloud OAuth 2.0 Client ID
+</ParamField>
+
+<ParamField path="client_secret" type="string" required>
+  Google Cloud OAuth 2.0 Client Secret
+</ParamField>
+
+**Returns:** `void` on success
+
+**Usage:**
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+
+try {
+  await invoke("save_youtube_credentials", {
+    clientId: "your-client-id.apps.googleusercontent.com",
+    clientSecret: "your-client-secret"
+  });
+  console.log("Credentials saved securely");
+} catch (error) {
+  console.error("Failed to save credentials:", error);
+}
+```
+
+<Warning>
+Client Secret is sensitive. Store it securely using this command - never hardcode it in your frontend code.
+</Warning>
+
+### needs_youtube_setup
+
+Check if YouTube Music setup is required (credentials not configured).
+
+```rust
+#[tauri::command]
+pub async fn needs_youtube_setup() -> Result<bool, String>
+```
+
+**Returns:** `boolean` - `true` if setup is needed
+
+**Usage:**
+
+```typescript
+const needsSetup = await invoke<boolean>("needs_youtube_setup");
+if (needsSetup) {
+  // Show YouTube setup screen
+  showYouTubeSetup();
+}
+```
+
+## OAuth Flow
+
+### start_youtube_oauth_flow
+
+Initialize the YouTube Music OAuth 2.0 flow. Opens the user's browser to Google's authorization page.
+
+```rust
+#[tauri::command]
+pub async fn start_youtube_oauth_flow() -> Result<(), String>
+```
+
+**Returns:** `void` - Listen for `youtube-oauth-success` or `youtube-oauth-failed` events
+
+**Events emitted:**
+
+- `youtube-oauth-success`: OAuth completed successfully
+- `youtube-oauth-failed`: OAuth failed with error
+
+**Usage:**
+
+```typescript
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+
+// Set up listeners BEFORE starting OAuth
+const unlistenSuccess = await listen("youtube-oauth-success", async () => {
+  console.log("YouTube OAuth successful!");
+  // Set active provider
+  await invoke("set_music_provider", { provider: "youtube" });
+});
+
+const unlistenFailed = await listen<{ error: string }>("youtube-oauth-failed", (event) => {
+  console.error("YouTube OAuth failed:", event.payload.error);
+});
+
+// Start the OAuth flow
+try {
+  await invoke("start_youtube_oauth_flow");
+  // Browser will open for user to authorize
+} catch (error) {
+  console.error("Failed to start OAuth:", error);
+}
+```
+
+<Info>
+The OAuth server runs on `http://127.0.0.1:3000`. Ensure this port is available and that your Google Cloud OAuth redirect URI includes `http://localhost:3000/callback`.
+</Info>
+
+### cancel_youtube_oauth_flow
+
+Cancel an in-progress YouTube OAuth flow.
+
+```rust
+#[tauri::command]
+pub async fn cancel_youtube_oauth_flow() -> Result<(), String>
+```
+
+**Returns:** `void`
+
+**Usage:**
+
+```typescript
+// User clicked "Cancel" during OAuth
+await invoke("cancel_youtube_oauth_flow");
+```
+
+## Token Management
+
+### get_youtube_tokens
+
+Retrieve stored YouTube access and refresh tokens.
+
+```rust
+#[tauri::command]
+pub async fn get_youtube_tokens() -> Result<TokenPair, String>
+```
+
+**Returns:**
+
+<ResponseField name="access_token" type="string">
+  Current YouTube access token
+</ResponseField>
+
+<ResponseField name="refresh_token" type="string">
+  YouTube refresh token for obtaining new access tokens
+</ResponseField>
+
+<ResponseField name="expires_at" type="number">
+  Unix timestamp when the access token expires
+</ResponseField>
+
+**Usage:**
+
+```typescript
+interface TokenPair {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+}
+
+const tokens = await invoke<TokenPair>("get_youtube_tokens");
+console.log("Token expires at:", new Date(tokens.expires_at * 1000));
+```
+
+### has_valid_youtube_tokens
+
+Check if valid YouTube tokens exist and are not expired.
+
+```rust
+#[tauri::command]
+pub async fn has_valid_youtube_tokens() -> Result<bool, String>
+```
+
+**Returns:** `boolean` - `true` if valid tokens exist
+
+**Usage:**
+
+```typescript
+const isAuthenticated = await invoke<boolean>("has_valid_youtube_tokens");
+if (!isAuthenticated) {
+  // Need to re-authenticate
+  await invoke("start_youtube_oauth_flow");
+}
+```
+
+### refresh_youtube_access_token
+
+Manually refresh the YouTube access token using the refresh token.
+
+```rust
+#[tauri::command]
+pub async fn refresh_youtube_access_token() -> Result<(), String>
+```
+
+**Returns:** `void` on success
+
+<Note>
+MiniFy automatically refreshes YouTube tokens in the background. Manual refresh is rarely needed.
+</Note>
+
+**Usage:**
+
+```typescript
+try {
+  await invoke("refresh_youtube_access_token");
+  console.log("Token refreshed successfully");
+} catch (error) {
+  console.error("Token refresh failed, re-authentication needed");
+}
+```
+
+### clear_youtube_credentials
+
+Remove all YouTube credentials and tokens from the keyring.
+
+```rust
+#[tauri::command]
+pub async fn clear_youtube_credentials() -> Result<(), String>
+```
+
+**Returns:** `void`
+
+**Usage:**
+
+```typescript
+// User clicked "Disconnect YouTube Music"
+await invoke("clear_youtube_credentials");
+```
+
+## Complete YouTube Setup Flow
+
+Here's a complete example showing YouTube Music setup and authentication:
+
+<Steps>
+  <Step title="Check if setup is needed">
+    ```typescript
+    const needsSetup = await invoke<boolean>("needs_youtube_setup");
+    ```
+  </Step>
+
+  <Step title="If setup needed, prompt for credentials">
+    ```typescript
+    if (needsSetup) {
+      const clientId = prompt("Enter your Google Client ID:");
+      const clientSecret = prompt("Enter your Google Client Secret:");
+      
+      await invoke("save_youtube_credentials", { 
+        clientId, 
+        clientSecret 
+      });
+    }
+    ```
+  </Step>
+
+  <Step title="Set up OAuth event listeners">
+    ```typescript
+    await listen("youtube-oauth-success", async () => {
+      await invoke("set_music_provider", { provider: "youtube" });
+      console.log("YouTube Music connected!");
+    });
+
+    await listen("youtube-oauth-failed", (event) => {
+      console.error("Failed:", event.payload.error);
+    });
+    ```
+  </Step>
+
+  <Step title="Start OAuth flow">
+    ```typescript
+    await invoke("start_youtube_oauth_flow");
+    // User completes authorization in browser
+    ```
+  </Step>
+</Steps>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Spotify Commands" icon="spotify" href="/api/spotify-commands">
+    Spotify authentication and playback commands
+  </Card>
+  <Card title="Settings Commands" icon="gear" href="/api/settings-commands">
+    Application settings management
+  </Card>
+  <Card title="Music Providers" icon="music" href="/configuration/music-providers">
+    Configure Spotify and YouTube Music
+  </Card>
+  <Card title="Authentication" icon="lock" href="/security/authentication">
+    OAuth security and token management
+  </Card>
+</CardGroup>
