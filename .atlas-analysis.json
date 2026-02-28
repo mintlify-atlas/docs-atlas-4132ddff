@@ -1,0 +1,108 @@
+{
+  "projectType": "saas",
+  "projectName": "MiniFy",
+  "projectDescription": "A lightweight Spotify mini player with AI DJ integration, custom themes, and secure credential management.",
+  "theme": "palm",
+  "primaryColor": "#1DB954",
+  "lightColor": "#1ED760",
+  "darkColor": "#1AA34A",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/player-layouts",
+              "features/themes",
+              "features/ai-dj",
+              "features/keyboard-shortcuts",
+              "features/discord-integration"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/settings",
+              "configuration/custom-themes",
+              "configuration/api-keys",
+              "configuration/music-providers"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "security/authentication",
+              "security/credential-storage",
+              "security/privacy"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developer",
+        "groups": [
+          {
+            "group": "Development",
+            "pages": [
+              "developer/architecture",
+              "developer/building",
+              "developer/contributing"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "api/overview",
+              "api/spotify-commands",
+              "api/ai-commands",
+              "api/settings-commands",
+              "api/theme-commands"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Spotify mini player with multiple layouts (A, B, C)",
+    "AI DJ with multi-provider support (OpenAI, Anthropic, Google AI, Groq)",
+    "Custom theme system with built-in Theme Studio",
+    "Secure OS-level credential storage (Keyring)",
+    "Discord Rich Presence integration",
+    "YouTube Music support alongside Spotify",
+    "Configurable keyboard shortcuts",
+    "OAuth PKCE authentication flow",
+    "Automatic token refresh",
+    "Native context menu integration"
+  ],
+  "publicApiSurface": [
+    "start_oauth_flow - Initialize Spotify OAuth PKCE flow",
+    "refresh_access_token - Refresh expired Spotify tokens",
+    "save_spotify_client_id - Store Spotify Client ID",
+    "get_tokens - Retrieve current OAuth tokens",
+    "save_ai_api_key - Store AI provider API key in keyring",
+    "get_ai_api_key - Retrieve AI provider API key",
+    "has_ai_api_key - Check if AI provider key exists",
+    "get_all_ai_providers - List configured AI providers",
+    "read_settings - Load user settings from disk",
+    "write_settings - Persist user settings to disk",
+    "save_custom_theme - Save custom theme JSON",
+    "load_custom_themes - Load all custom themes",
+    "delete_custom_theme - Remove custom theme",
+    "validate_theme_json - Validate theme structure",
+    "set_layout - Change player layout",
+    "enable_discord_rpc - Enable Discord Rich Presence",
+    "update_discord_presence - Update Discord status",
+    "clear_everything - Clear all credentials and settings"
+  ]
+}
